@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SSurveyIdRouteImport } from './routes/s.$surveyId'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppAiRouteImport } from './routes/_app.ai'
 import { Route as AppAdminRouteImport } from './routes/_app.admin'
@@ -30,6 +31,11 @@ const AppRoute = AppRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SSurveyIdRoute = SSurveyIdRouteImport.update({
+  id: '/s/$surveyId',
+  path: '/s/$surveyId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AppAdminRoute
   '/ai': typeof AppAiRoute
   '/dashboard': typeof AppDashboardRoute
+  '/s/$surveyId': typeof SSurveyIdRoute
   '/surveys/new': typeof AppSurveysNewRoute
   '/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
 }
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AppAdminRoute
   '/ai': typeof AppAiRoute
   '/dashboard': typeof AppDashboardRoute
+  '/s/$surveyId': typeof SSurveyIdRoute
   '/surveys/new': typeof AppSurveysNewRoute
   '/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
 }
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/_app/admin': typeof AppAdminRoute
   '/_app/ai': typeof AppAiRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/s/$surveyId': typeof SSurveyIdRoute
   '/_app/surveys/new': typeof AppSurveysNewRoute
   '/_app/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
 }
@@ -95,6 +104,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/ai'
     | '/dashboard'
+    | '/s/$surveyId'
     | '/surveys/new'
     | '/surveys/$id/analytics'
   fileRoutesByTo: FileRoutesByTo
@@ -104,6 +114,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/ai'
     | '/dashboard'
+    | '/s/$surveyId'
     | '/surveys/new'
     | '/surveys/$id/analytics'
   id:
@@ -114,6 +125,7 @@ export interface FileRouteTypes {
     | '/_app/admin'
     | '/_app/ai'
     | '/_app/dashboard'
+    | '/s/$surveyId'
     | '/_app/surveys/new'
     | '/_app/surveys/$id/analytics'
   fileRoutesById: FileRoutesById
@@ -122,6 +134,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  SSurveyIdRoute: typeof SSurveyIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -145,6 +158,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/s/$surveyId': {
+      id: '/s/$surveyId'
+      path: '/s/$surveyId'
+      fullPath: '/s/$surveyId'
+      preLoaderRoute: typeof SSurveyIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/dashboard': {
@@ -207,6 +227,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  SSurveyIdRoute: SSurveyIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
