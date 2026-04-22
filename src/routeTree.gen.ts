@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppSurveysNewRouteImport } from './routes/_app.surveys.new'
+import { Route as AppSurveysIdAnalyticsRouteImport } from './routes/_app.surveys.$id.analytics'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -39,18 +40,25 @@ const AppSurveysNewRoute = AppSurveysNewRouteImport.update({
   path: '/surveys/new',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSurveysIdAnalyticsRoute = AppSurveysIdAnalyticsRouteImport.update({
+  id: '/surveys/$id/analytics',
+  path: '/surveys/$id/analytics',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/dashboard': typeof AppDashboardRoute
   '/surveys/new': typeof AppSurveysNewRoute
+  '/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/dashboard': typeof AppDashboardRoute
   '/surveys/new': typeof AppSurveysNewRoute
+  '/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -59,12 +67,18 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/surveys/new': typeof AppSurveysNewRoute
+  '/_app/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/dashboard' | '/surveys/new'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/dashboard'
+    | '/surveys/new'
+    | '/surveys/$id/analytics'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/dashboard' | '/surveys/new'
+  to: '/' | '/login' | '/dashboard' | '/surveys/new' | '/surveys/$id/analytics'
   id:
     | '__root__'
     | '/'
@@ -72,6 +86,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/dashboard'
     | '/_app/surveys/new'
+    | '/_app/surveys/$id/analytics'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -117,17 +132,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSurveysNewRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/surveys/$id/analytics': {
+      id: '/_app/surveys/$id/analytics'
+      path: '/surveys/$id/analytics'
+      fullPath: '/surveys/$id/analytics'
+      preLoaderRoute: typeof AppSurveysIdAnalyticsRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppSurveysNewRoute: typeof AppSurveysNewRoute
+  AppSurveysIdAnalyticsRoute: typeof AppSurveysIdAnalyticsRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppSurveysNewRoute: AppSurveysNewRoute,
+  AppSurveysIdAnalyticsRoute: AppSurveysIdAnalyticsRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
