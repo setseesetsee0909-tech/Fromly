@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppAiRouteImport } from './routes/_app.ai'
 import { Route as AppSurveysNewRouteImport } from './routes/_app.surveys.new'
 import { Route as AppSurveysIdAnalyticsRouteImport } from './routes/_app.surveys.$id.analytics'
 
@@ -35,6 +36,11 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAiRoute = AppAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSurveysNewRoute = AppSurveysNewRouteImport.update({
   id: '/surveys/new',
   path: '/surveys/new',
@@ -49,6 +55,7 @@ const AppSurveysIdAnalyticsRoute = AppSurveysIdAnalyticsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/ai': typeof AppAiRoute
   '/dashboard': typeof AppDashboardRoute
   '/surveys/new': typeof AppSurveysNewRoute
   '/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
@@ -56,6 +63,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/ai': typeof AppAiRoute
   '/dashboard': typeof AppDashboardRoute
   '/surveys/new': typeof AppSurveysNewRoute
   '/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
@@ -65,6 +73,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/ai': typeof AppAiRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/surveys/new': typeof AppSurveysNewRoute
   '/_app/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
@@ -74,16 +83,24 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/ai'
     | '/dashboard'
     | '/surveys/new'
     | '/surveys/$id/analytics'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/dashboard' | '/surveys/new' | '/surveys/$id/analytics'
+  to:
+    | '/'
+    | '/login'
+    | '/ai'
+    | '/dashboard'
+    | '/surveys/new'
+    | '/surveys/$id/analytics'
   id:
     | '__root__'
     | '/'
     | '/_app'
     | '/login'
+    | '/_app/ai'
     | '/_app/dashboard'
     | '/_app/surveys/new'
     | '/_app/surveys/$id/analytics'
@@ -125,6 +142,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/ai': {
+      id: '/_app/ai'
+      path: '/ai'
+      fullPath: '/ai'
+      preLoaderRoute: typeof AppAiRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/surveys/new': {
       id: '/_app/surveys/new'
       path: '/surveys/new'
@@ -143,12 +167,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppAiRoute: typeof AppAiRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppSurveysNewRoute: typeof AppSurveysNewRoute
   AppSurveysIdAnalyticsRoute: typeof AppSurveysIdAnalyticsRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAiRoute: AppAiRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppSurveysNewRoute: AppSurveysNewRoute,
   AppSurveysIdAnalyticsRoute: AppSurveysIdAnalyticsRoute,
