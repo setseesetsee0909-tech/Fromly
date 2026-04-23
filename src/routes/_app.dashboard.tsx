@@ -5,7 +5,8 @@ import { useAuth } from "@/components/formly/AuthProvider";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, FileText, MessageSquare, PlusCircle, Sparkles, Eye, Loader2 } from "lucide-react";
+import { BarChart3, FileText, MessageSquare, PlusCircle, Sparkles, Eye, Loader2, Copy, Trash2, Send, Archive } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => ({ meta: [{ title: "Хяналтын самбар — Formly" }] }),
@@ -26,27 +27,54 @@ function Dashboard() {
   const [responseCount, setResponseCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = async () => {
     if (!user) return;
-    (async () => {
-      const { data: s } = await supabase
-        .from("surveys")
-        .select("id, title, description, is_published, created_at")
-        .eq("owner_id", user.id)
-        .order("created_at", { ascending: false });
-      setSurveys(s ?? []);
+    const { data: s } = await supabase
+      .from("surveys")
+      .select("id, title, description, is_published, created_at")
+      .eq("owner_id", user.id)
+      .order("created_at", { ascending: false });
+    setSurveys(s ?? []);
+    const ids = (s ?? []).map((x) => x.id);
+    if (ids.length) {
+      const { count } = await supabase
+        .from("responses")
+        .select("*", { count: "exact", head: true })
+        .in("survey_id", ids);
+      setResponseCount(count ?? 0);
+    } else {
+      setResponseCount(0);
+    }
+    setLoading(false);
+  };
 
-      const ids = (s ?? []).map((x) => x.id);
-      if (ids.length) {
-        const { count } = await supabase
-          .from("responses")
-          .select("*", { count: "exact", head: true })
-          .in("survey_id", ids);
-        setResponseCount(count ?? 0);
-      }
-      setLoading(false);
-    })();
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  const togglePublish = async (s: SurveyRow) => {
+    const { error } = await supabase
+      .from("surveys")
+      .update({ is_published: !s.is_published })
+      .eq("id", s.id);
+    if (error) return toast.error(error.message);
+    toast.success(s.is_published ? "Ноорог болголоо" : "Нийтэллээ");
+    void load();
+  };
+
+  const remove = async (s: SurveyRow) => {
+    if (!confirm(`"${s.title}" судалгааг устгах уу?`)) return;
+    const { error } = await supabase.from("surveys").delete().eq("id", s.id);
+    if (error) return toast.error(error.message);
+    toast.success("Устгалаа");
+    void load();
+  };
+
+  const copyLink = (id: string) => {
+    navigator.clipboard.writeText(`${window.location.origin}/s/${id}`);
+    toast.success("Холбоос хуулагдлаа");
+  };
 
   const published = surveys.filter((s) => s.is_published).length;
   const completion = surveys.length ? Math.round((published / surveys.length) * 100) : 0;
@@ -121,7 +149,7 @@ function Dashboard() {
         ) : (
           <div className="divide-y">
             {surveys.map((s) => (
-              <div key={s.id} className="flex items-center justify-between gap-4 py-3">
+              <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{s.title}</p>
                   <p className="truncate text-sm text-muted-foreground">
@@ -131,11 +159,24 @@ function Dashboard() {
                 <Badge variant={s.is_published ? "default" : "secondary"}>
                   {s.is_published ? "Нийтлэгдсэн" : "Ноорог"}
                 </Badge>
-                <Button asChild size="sm" variant="outline">
-                  <Link to="/surveys/$id/analytics" params={{ id: s.id }}>
-                    <Eye className="mr-1.5 h-3.5 w-3.5" /> Үзэх
-                  </Link>
-                </Button>
+                <div className="flex flex-wrap gap-1.5">
+                  {s.is_published && (
+                    <Button size="sm" variant="ghost" onClick={() => copyLink(s.id)} title="Холбоос">
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  <Button size="sm" variant="ghost" onClick={() => togglePublish(s)} title={s.is_published ? "Ноорог" : "Нийтлэх"}>
+                    {s.is_published ? <Archive className="h-3.5 w-3.5" /> : <Send className="h-3.5 w-3.5" />}
+                  </Button>
+                  <Button asChild size="sm" variant="outline">
+                    <Link to="/surveys/$id/analytics" params={{ id: s.id }}>
+                      <Eye className="mr-1.5 h-3.5 w-3.5" /> Үзэх
+                    </Link>
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => remove(s)} title="Устгах">
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

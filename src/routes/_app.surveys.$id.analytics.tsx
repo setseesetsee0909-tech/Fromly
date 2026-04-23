@@ -16,8 +16,9 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { ArrowLeft, Copy, Loader2, MessageSquare, FileText } from "lucide-react";
+import { ArrowLeft, Copy, Loader2, MessageSquare, FileText, Send, Archive, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_app/surveys/$id/analytics")({
   head: () => ({ meta: [{ title: "Аналитик — Formly" }] }),
@@ -40,6 +41,7 @@ const COLORS = ["hsl(var(--primary))", "hsl(var(--secondary))", "hsl(var(--accen
 
 function Analytics() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
   const [survey, setSurvey] = useState<{ title: string; description: string | null; is_published: boolean } | null>(null);
   const [questions, setQuestions] = useState<Q[]>([]);
   const [answers, setAnswers] = useState<A[]>([]);
@@ -85,6 +87,25 @@ function Analytics() {
     toast.success("Холбоос хуулагдлаа");
   };
 
+  const togglePublish = async () => {
+    if (!survey) return;
+    const { error } = await supabase
+      .from("surveys")
+      .update({ is_published: !survey.is_published })
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    setSurvey({ ...survey, is_published: !survey.is_published });
+    toast.success(survey.is_published ? "Ноорог болголоо" : "Нийтэллээ");
+  };
+
+  const remove = async () => {
+    if (!confirm("Энэ судалгааг устгах уу?")) return;
+    const { error } = await supabase.from("surveys").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Устгалаа");
+    navigate({ to: "/dashboard" });
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -121,11 +142,20 @@ function Analytics() {
             </Badge>
           </div>
         </div>
-        {survey.is_published && (
-          <Button onClick={copyLink} variant="outline">
-            <Copy className="mr-2 h-4 w-4" /> Холбоос хуулах
+        <div className="flex flex-wrap gap-2">
+          {survey.is_published && (
+            <Button onClick={copyLink} variant="outline">
+              <Copy className="mr-2 h-4 w-4" /> Холбоос
+            </Button>
+          )}
+          <Button onClick={togglePublish} variant="outline">
+            {survey.is_published ? <Archive className="mr-2 h-4 w-4" /> : <Send className="mr-2 h-4 w-4" />}
+            {survey.is_published ? "Ноорог болгох" : "Нийтлэх"}
           </Button>
-        )}
+          <Button onClick={remove} variant="destructive">
+            <Trash2 className="mr-2 h-4 w-4" /> Устгах
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
