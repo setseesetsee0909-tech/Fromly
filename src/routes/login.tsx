@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/components/formly/AuthProvider";
+import { useI18n, LanguageSwitcher } from "@/components/formly/I18nProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, KeyRound } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const { user, loading } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -64,7 +66,10 @@ function LoginPage() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="hidden lg:flex flex-col justify-between bg-primary p-12 text-primary-foreground">
-        <Logo className="text-primary-foreground" />
+        <div className="flex items-center justify-between">
+          <Logo className="text-primary-foreground" />
+          <LanguageSwitcher />
+        </div>
         <div>
           <h2 className="text-4xl font-bold leading-tight">
             Судалгаагаа
@@ -74,14 +79,25 @@ function LoginPage() {
           <p className="mt-4 text-primary-foreground/80">
             AI-ийн тусламжтай асуултаа автоматаар бүтээж, хариултыг шууд аналитик болгон хар.
           </p>
+          <div className="mt-8 rounded-xl border border-primary-foreground/20 bg-primary-foreground/5 p-4 text-sm">
+            <div className="flex items-center gap-2 font-semibold">
+              <KeyRound className="h-4 w-4" /> {t("auth.demoTitle")}
+            </div>
+            <p className="mt-1 text-xs text-primary-foreground/70">{t("auth.demoHint")}</p>
+            <div className="mt-3 space-y-1 font-mono text-xs">
+              <div>demo1@formly.app … demo10@formly.app</div>
+              <div className="text-primary-foreground/70">password: demo1234</div>
+            </div>
+          </div>
         </div>
         <p className="text-sm text-primary-foreground/60">© 2026 Formly</p>
       </div>
 
       <div className="flex items-center justify-center p-6">
         <Card className="w-full max-w-md p-8">
-          <div className="lg:hidden mb-6">
+          <div className="lg:hidden mb-6 flex items-center justify-between">
             <Logo />
+            <LanguageSwitcher />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">
             {mode === "signin" ? "Тавтай морилно уу" : "Шинэ данс үүсгэх"}
