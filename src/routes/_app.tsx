@@ -2,6 +2,7 @@ import { createFileRoute, Link, Outlet, useNavigate, useLocation } from "@tansta
 import { useEffect } from "react";
 import { useAuth } from "@/components/formly/AuthProvider";
 import { Logo } from "@/components/formly/Logo";
+import { useI18n, LanguageSwitcher } from "@/components/formly/I18nProvider";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
@@ -19,6 +20,7 @@ export const Route = createFileRoute("/_app")({
 
 function AppLayout() {
   const { user, loading, isAdmin, signOut } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -35,11 +37,11 @@ function AppLayout() {
   }
 
   const nav = [
-    { to: "/dashboard", label: "Хяналтын самбар", en: "Dashboard", icon: LayoutDashboard },
-    { to: "/surveys/new", label: "Шинэ судалгаа", en: "New Survey", icon: PlusCircle },
-    { to: "/ai", label: "AI туслах", en: "AI Assistant", icon: Sparkles },
+    { to: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
+    { to: "/surveys/new", label: t("nav.new"), icon: PlusCircle },
+    { to: "/ai", label: t("nav.ai"), icon: Sparkles },
     ...(isAdmin
-      ? [{ to: "/admin", label: "Админ", en: "Admin", icon: Shield }]
+      ? [{ to: "/admin", label: t("nav.admin"), icon: Shield }]
       : []),
   ];
 
@@ -75,7 +77,7 @@ function AppLayout() {
         <div className="border-t p-3">
           <div className="mb-2 rounded-lg bg-muted/50 px-3 py-2 text-xs">
             <p className="truncate font-medium text-foreground">{user.email}</p>
-            <p className="text-muted-foreground">{isAdmin ? "Админ" : "Хэрэглэгч"}</p>
+            <p className="text-muted-foreground">{isAdmin ? t("role.admin") : t("role.user")}</p>
           </div>
           <Button
             variant="ghost"
@@ -86,7 +88,7 @@ function AppLayout() {
             }}
           >
             <LogOut className="h-4 w-4" />
-            Гарах
+            {t("nav.signout")}
           </Button>
         </div>
       </aside>
@@ -97,10 +99,12 @@ function AppLayout() {
             <Logo />
           </div>
           <div className="hidden md:block" />
-          <div className="flex items-center gap-2 md:hidden">
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
             <Button
               variant="ghost"
               size="sm"
+              className="md:hidden"
               onClick={async () => {
                 await signOut();
                 navigate({ to: "/login" });
