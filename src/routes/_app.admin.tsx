@@ -13,7 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, ShieldAlert, Eye } from "lucide-react";
+import { Loader2, ShieldAlert, Eye, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/admin")({
   head: () => ({ meta: [{ title: "Админ — Formly" }] }),
@@ -39,18 +40,28 @@ function Admin() {
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [busy, setBusy] = useState(true);
 
+  const load = async () => {
+    const [s, p] = await Promise.all([
+      supabase.from("surveys").select("id, title, is_published, created_at, owner_id").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("user_id, display_name, created_at").order("created_at", { ascending: false }),
+    ]);
+    setSurveys(s.data ?? []);
+    setProfiles(p.data ?? []);
+    setBusy(false);
+  };
+
   useEffect(() => {
     if (!isAdmin) return;
-    (async () => {
-      const [s, p] = await Promise.all([
-        supabase.from("surveys").select("id, title, is_published, created_at, owner_id").order("created_at", { ascending: false }),
-        supabase.from("profiles").select("user_id, display_name, created_at").order("created_at", { ascending: false }),
-      ]);
-      setSurveys(s.data ?? []);
-      setProfiles(p.data ?? []);
-      setBusy(false);
-    })();
+    void load();
   }, [isAdmin]);
+
+  const removeSurvey = async (s: SurveyRow) => {
+    if (!confirm(`"${s.title}" устгах уу?`)) return;
+    const { error } = await supabase.from("surveys").delete().eq("id", s.id);
+    if (error) return toast.error(error.message);
+    toast.success("Устгалаа");
+    void load();
+  };
 
   if (loading) {
     return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>;
@@ -136,11 +147,16 @@ function Admin() {
                   </TableCell>
                   <TableCell className="text-sm">{new Date(s.created_at).toLocaleDateString("mn-MN")}</TableCell>
                   <TableCell>
-                    <Button asChild size="sm" variant="outline">
-                      <Link to="/surveys/$id/analytics" params={{ id: s.id }}>
-                        <Eye className="mr-1.5 h-3.5 w-3.5" /> Үзэх
-                      </Link>
-                    </Button>
+                    <div className="flex gap-1.5">
+                      <Button asChild size="sm" variant="outline">
+                        <Link to="/surveys/$id/analytics" params={{ id: s.id }}>
+                          <Eye className="mr-1.5 h-3.5 w-3.5" /> Үзэх
+                        </Link>
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => removeSurvey(s)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
