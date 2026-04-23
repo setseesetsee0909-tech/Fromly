@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/components/formly/AuthProvider";
 import { useI18n, LanguageSwitcher } from "@/components/formly/I18nProvider";
+import { ThemeToggle } from "@/components/formly/ThemeProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, KeyRound } from "lucide-react";
@@ -68,7 +69,10 @@ function LoginPage() {
       <div className="hidden lg:flex flex-col justify-between bg-primary p-12 text-primary-foreground">
         <div className="flex items-center justify-between">
           <Logo className="text-primary-foreground" />
-          <LanguageSwitcher />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <LanguageSwitcher />
+          </div>
         </div>
         <div>
           <h2 className="text-4xl font-bold leading-tight">
@@ -97,7 +101,10 @@ function LoginPage() {
         <Card className="w-full max-w-md p-8">
           <div className="lg:hidden mb-6 flex items-center justify-between">
             <Logo />
-            <LanguageSwitcher />
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <LanguageSwitcher />
+            </div>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">
             {mode === "signin" ? "Тавтай морилно уу" : "Шинэ данс үүсгэх"}
