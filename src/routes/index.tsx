@@ -3,6 +3,7 @@ import { Logo } from "@/components/formly/Logo";
 import { Button } from "@/components/ui/button";
 import { Sparkles, BarChart3, Layers, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useI18n, LanguageSwitcher } from "@/components/formly/I18nProvider";
+import { ThemeToggle } from "@/components/formly/ThemeProvider";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,6 +27,7 @@ function Landing() {
       <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
         <Logo />
         <nav className="flex items-center gap-2">
+          <ThemeToggle />
           <LanguageSwitcher className="mr-2" />
           <Button asChild variant="ghost">
             <Link to="/login">{t("landing.login")}</Link>
