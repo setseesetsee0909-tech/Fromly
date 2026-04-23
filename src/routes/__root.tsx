@@ -4,6 +4,7 @@ import appCss from "../styles.css?url";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/components/formly/AuthProvider";
 import { I18nProvider } from "@/components/formly/I18nProvider";
+import { ThemeProvider } from "@/components/formly/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { useState } from "react";
 
@@ -85,12 +86,14 @@ function RootComponent() {
   const [queryClient] = useState(() => new QueryClient());
   return (
     <QueryClientProvider client={queryClient}>
-      <I18nProvider>
-        <AuthProvider>
-          <Outlet />
-          <Toaster richColors position="top-right" />
-        </AuthProvider>
-      </I18nProvider>
+      <ThemeProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <Outlet />
+            <Toaster richColors position="top-right" />
+          </AuthProvider>
+        </I18nProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

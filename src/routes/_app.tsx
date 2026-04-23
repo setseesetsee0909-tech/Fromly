@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/components/formly/AuthProvider";
 import { Logo } from "@/components/formly/Logo";
 import { useI18n, LanguageSwitcher } from "@/components/formly/I18nProvider";
+import { ThemeToggle } from "@/components/formly/ThemeProvider";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
@@ -100,6 +101,7 @@ function AppLayout() {
           </div>
           <div className="hidden md:block" />
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <LanguageSwitcher />
             <Button
               variant="ghost"
