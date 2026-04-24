@@ -13,7 +13,10 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SSurveyIdRouteImport } from './routes/s.$surveyId'
+import { Route as AppTeamRouteImport } from './routes/_app.team'
+import { Route as AppPricingRouteImport } from './routes/_app.pricing'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppBillingRouteImport } from './routes/_app.billing'
 import { Route as AppAiRouteImport } from './routes/_app.ai'
 import { Route as AppAdminRouteImport } from './routes/_app.admin'
 import { Route as AppSurveysNewRouteImport } from './routes/_app.surveys.new'
@@ -38,9 +41,24 @@ const SSurveyIdRoute = SSurveyIdRouteImport.update({
   path: '/s/$surveyId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppTeamRoute = AppTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPricingRoute = AppPricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBillingRoute = AppBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAiRoute = AppAiRouteImport.update({
@@ -69,7 +87,10 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin': typeof AppAdminRoute
   '/ai': typeof AppAiRoute
+  '/billing': typeof AppBillingRoute
   '/dashboard': typeof AppDashboardRoute
+  '/pricing': typeof AppPricingRoute
+  '/team': typeof AppTeamRoute
   '/s/$surveyId': typeof SSurveyIdRoute
   '/surveys/new': typeof AppSurveysNewRoute
   '/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
@@ -79,7 +100,10 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/admin': typeof AppAdminRoute
   '/ai': typeof AppAiRoute
+  '/billing': typeof AppBillingRoute
   '/dashboard': typeof AppDashboardRoute
+  '/pricing': typeof AppPricingRoute
+  '/team': typeof AppTeamRoute
   '/s/$surveyId': typeof SSurveyIdRoute
   '/surveys/new': typeof AppSurveysNewRoute
   '/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
@@ -91,7 +115,10 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/admin': typeof AppAdminRoute
   '/_app/ai': typeof AppAiRoute
+  '/_app/billing': typeof AppBillingRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/pricing': typeof AppPricingRoute
+  '/_app/team': typeof AppTeamRoute
   '/s/$surveyId': typeof SSurveyIdRoute
   '/_app/surveys/new': typeof AppSurveysNewRoute
   '/_app/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
@@ -103,7 +130,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin'
     | '/ai'
+    | '/billing'
     | '/dashboard'
+    | '/pricing'
+    | '/team'
     | '/s/$surveyId'
     | '/surveys/new'
     | '/surveys/$id/analytics'
@@ -113,7 +143,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin'
     | '/ai'
+    | '/billing'
     | '/dashboard'
+    | '/pricing'
+    | '/team'
     | '/s/$surveyId'
     | '/surveys/new'
     | '/surveys/$id/analytics'
@@ -124,7 +157,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/admin'
     | '/_app/ai'
+    | '/_app/billing'
     | '/_app/dashboard'
+    | '/_app/pricing'
+    | '/_app/team'
     | '/s/$surveyId'
     | '/_app/surveys/new'
     | '/_app/surveys/$id/analytics'
@@ -167,11 +203,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSurveyIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/team': {
+      id: '/_app/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof AppTeamRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/pricing': {
+      id: '/_app/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof AppPricingRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/dashboard': {
       id: '/_app/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/billing': {
+      id: '/_app/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof AppBillingRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/ai': {
@@ -208,7 +265,10 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
   AppAiRoute: typeof AppAiRoute
+  AppBillingRoute: typeof AppBillingRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppPricingRoute: typeof AppPricingRoute
+  AppTeamRoute: typeof AppTeamRoute
   AppSurveysNewRoute: typeof AppSurveysNewRoute
   AppSurveysIdAnalyticsRoute: typeof AppSurveysIdAnalyticsRoute
 }
@@ -216,7 +276,10 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRoute,
   AppAiRoute: AppAiRoute,
+  AppBillingRoute: AppBillingRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppPricingRoute: AppPricingRoute,
+  AppTeamRoute: AppTeamRoute,
   AppSurveysNewRoute: AppSurveysNewRoute,
   AppSurveysIdAnalyticsRoute: AppSurveysIdAnalyticsRoute,
 }

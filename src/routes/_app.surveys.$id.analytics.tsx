@@ -19,6 +19,10 @@ import {
 import { ArrowLeft, Copy, Loader2, MessageSquare, FileText, Send, Archive, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
+import { usePlan } from "@/components/formly/PlanProvider";
+import { useI18n } from "@/components/formly/I18nProvider";
+import { ResponseMap } from "@/components/formly/ResponseMap";
+import { MapPin, Download, Lock } from "lucide-react";
 
 export const Route = createFileRoute("/_app/surveys/$id/analytics")({
   head: () => ({ meta: [{ title: "Аналитик — Formly" }] }),
@@ -42,10 +46,13 @@ const COLORS = ["hsl(var(--primary))", "hsl(var(--secondary))", "hsl(var(--accen
 function Analytics() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const { plan, limits } = usePlan();
+  const { t } = useI18n();
   const [survey, setSurvey] = useState<{ title: string; description: string | null; is_published: boolean } | null>(null);
   const [questions, setQuestions] = useState<Q[]>([]);
   const [answers, setAnswers] = useState<A[]>([]);
   const [responseCount, setResponseCount] = useState(0);
+  const [geoPoints, setGeoPoints] = useState<{ lat: number; lng: number; city: string | null; country: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -66,9 +73,15 @@ function Analytics() {
 
       const { data: rs, count } = await supabase
         .from("responses")
-        .select("id", { count: "exact" })
+        .select("id, lat, lng, city, country", { count: "exact" })
         .eq("survey_id", id);
       setResponseCount(count ?? 0);
+      setGeoPoints(
+        (rs ?? [])
+          .filter((r): r is { id: string; lat: number; lng: number; city: string | null; country: string | null } =>
+            typeof r.lat === "number" && typeof r.lng === "number")
+          .map((r) => ({ lat: r.lat, lng: r.lng, city: r.city, country: r.country })),
+      );
 
       if (rs && rs.length) {
         const { data: ans } = await supabase
@@ -104,6 +117,27 @@ function Analytics() {
     if (error) return toast.error(error.message);
     toast.success("Устгалаа");
     navigate({ to: "/dashboard" });
+  };
+
+  const exportCsv = () => {
+    if (!limits.export) {
+      toast.error(t("limit.exportPro"));
+      navigate({ to: "/pricing" });
+      return;
+    }
+    const header = ["question", "answer"];
+    const rows = answers.map((a) => {
+      const q = questions.find((x) => x.id === a.question_id);
+      return [JSON.stringify(q?.label ?? ""), JSON.stringify(String(a.value))];
+    });
+    const csv = [header.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${survey?.title ?? "survey"}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (loading) {
@@ -148,6 +182,10 @@ function Analytics() {
               <Copy className="mr-2 h-4 w-4" /> Холбоос
             </Button>
           )}
+          <Button onClick={exportCsv} variant="outline">
+            {limits.export ? <Download className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
+            {t("analytics.export")}
+          </Button>
           <Button onClick={togglePublish} variant="outline">
             {survey.is_published ? <Archive className="mr-2 h-4 w-4" /> : <Send className="mr-2 h-4 w-4" />}
             {survey.is_published ? "Ноорог болгох" : "Нийтлэх"}
@@ -157,6 +195,32 @@ function Analytics() {
           </Button>
         </div>
       </div>
+
+      <Card className="p-6">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="flex items-center gap-2 font-semibold">
+            <MapPin className="h-4 w-4 text-primary" /> {t("analytics.map")}
+          </p>
+          {!limits.map && (
+            <Badge variant="outline" className="gap-1">
+              <Lock className="h-3 w-3" /> Pro
+            </Badge>
+          )}
+        </div>
+        {!limits.map ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-12 text-center">
+            <Lock className="h-8 w-8 text-muted-foreground" />
+            <p className="mt-2 text-sm">{t("limit.mapPro")}</p>
+            <Button asChild className="mt-3" size="sm">
+              <a href="/pricing">{t("plan.upgrade")}</a>
+            </Button>
+          </div>
+        ) : geoPoints.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">—</p>
+        ) : (
+          <ResponseMap points={geoPoints} />
+        )}
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="p-5">

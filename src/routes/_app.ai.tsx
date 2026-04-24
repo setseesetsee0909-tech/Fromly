@@ -1,11 +1,13 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/components/formly/AuthProvider";
+import { usePlan } from "@/components/formly/PlanProvider";
+import { useI18n } from "@/components/formly/I18nProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, Loader2, Wand2 } from "lucide-react";
+import { Sparkles, Loader2, Wand2, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/ai")({
@@ -26,6 +28,8 @@ interface Generated {
 
 function AIAssistant() {
   const { user } = useAuth();
+  const { limits } = usePlan();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
@@ -33,6 +37,11 @@ function AIAssistant() {
   const [saving, setSaving] = useState(false);
 
   const generate = async () => {
+    if (!limits.aiEnabled) {
+      toast.error(t("limit.aiPro"));
+      navigate({ to: "/pricing" });
+      return;
+    }
     if (!prompt.trim()) {
       toast.error("Санаагаа бичнэ үү");
       return;
@@ -94,6 +103,12 @@ function AIAssistant() {
       </div>
 
       <Card className="p-6">
+        {!limits.aiEnabled && (
+          <div className="mb-4 flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+            <span className="flex items-center gap-2"><Lock className="h-4 w-4" /> {t("limit.aiPro")}</span>
+            <Button asChild size="sm"><Link to="/pricing">{t("plan.upgrade")}</Link></Button>
+          </div>
+        )}
         <label className="mb-2 block text-sm font-medium">Та ямар судалгаа үүсгэх вэ?</label>
         <Textarea
           value={prompt}
