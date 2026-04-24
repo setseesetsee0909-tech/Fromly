@@ -23,7 +23,6 @@ import { usePlan } from "@/components/formly/PlanProvider";
 import { useI18n } from "@/components/formly/I18nProvider";
 import { ResponseMap } from "@/components/formly/ResponseMap";
 import { MapPin, Download, Lock } from "lucide-react";
-import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_app/surveys/$id/analytics")({
   head: () => ({ meta: [{ title: "Аналитик — Formly" }] }),
