@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SSurveyIdRouteImport } from './routes/s.$surveyId'
+import { Route as AppTeamRouteImport } from './routes/_app.team'
 import { Route as AppPricingRouteImport } from './routes/_app.pricing'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppBillingRouteImport } from './routes/_app.billing'
@@ -39,6 +40,11 @@ const SSurveyIdRoute = SSurveyIdRouteImport.update({
   id: '/s/$surveyId',
   path: '/s/$surveyId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppTeamRoute = AppTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppPricingRoute = AppPricingRouteImport.update({
   id: '/pricing',
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/billing': typeof AppBillingRoute
   '/dashboard': typeof AppDashboardRoute
   '/pricing': typeof AppPricingRoute
+  '/team': typeof AppTeamRoute
   '/s/$surveyId': typeof SSurveyIdRoute
   '/surveys/new': typeof AppSurveysNewRoute
   '/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/billing': typeof AppBillingRoute
   '/dashboard': typeof AppDashboardRoute
   '/pricing': typeof AppPricingRoute
+  '/team': typeof AppTeamRoute
   '/s/$surveyId': typeof SSurveyIdRoute
   '/surveys/new': typeof AppSurveysNewRoute
   '/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/_app/billing': typeof AppBillingRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/pricing': typeof AppPricingRoute
+  '/_app/team': typeof AppTeamRoute
   '/s/$surveyId': typeof SSurveyIdRoute
   '/_app/surveys/new': typeof AppSurveysNewRoute
   '/_app/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
     | '/billing'
     | '/dashboard'
     | '/pricing'
+    | '/team'
     | '/s/$surveyId'
     | '/surveys/new'
     | '/surveys/$id/analytics'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/billing'
     | '/dashboard'
     | '/pricing'
+    | '/team'
     | '/s/$surveyId'
     | '/surveys/new'
     | '/surveys/$id/analytics'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/_app/billing'
     | '/_app/dashboard'
     | '/_app/pricing'
+    | '/_app/team'
     | '/s/$surveyId'
     | '/_app/surveys/new'
     | '/_app/surveys/$id/analytics'
@@ -190,6 +202,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/s/$surveyId'
       preLoaderRoute: typeof SSurveyIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/team': {
+      id: '/_app/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof AppTeamRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/pricing': {
       id: '/_app/pricing'
@@ -249,6 +268,7 @@ interface AppRouteChildren {
   AppBillingRoute: typeof AppBillingRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppPricingRoute: typeof AppPricingRoute
+  AppTeamRoute: typeof AppTeamRoute
   AppSurveysNewRoute: typeof AppSurveysNewRoute
   AppSurveysIdAnalyticsRoute: typeof AppSurveysIdAnalyticsRoute
 }
@@ -259,6 +279,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppBillingRoute: AppBillingRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppPricingRoute: AppPricingRoute,
+  AppTeamRoute: AppTeamRoute,
   AppSurveysNewRoute: AppSurveysNewRoute,
   AppSurveysIdAnalyticsRoute: AppSurveysIdAnalyticsRoute,
 }
