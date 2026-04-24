@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/components/formly/AuthProvider";
+import { usePlan } from "@/components/formly/PlanProvider";
+import { useI18n } from "@/components/formly/I18nProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +37,8 @@ const newId = () => Math.random().toString(36).slice(2);
 
 function NewSurvey() {
   const { user } = useAuth();
+  const { plan, limits } = usePlan();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -58,6 +62,18 @@ function NewSurvey() {
     if (questions.some((q) => !q.label.trim())) {
       toast.error("Бүх асуултын нэр бөглөнө үү");
       return;
+    }
+    // Free plan: 3 survey limit
+    if (plan === "free") {
+      const { count } = await supabase
+        .from("surveys")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_id", user.id);
+      if ((count ?? 0) >= limits.surveys) {
+        toast.error(t("limit.surveysReached"));
+        navigate({ to: "/pricing" });
+        return;
+      }
     }
     setBusy(true);
     try {
