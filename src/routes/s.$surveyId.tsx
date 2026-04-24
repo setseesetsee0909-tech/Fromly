@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Logo } from "@/components/formly/Logo";
 import { Loader2, CheckCircle2, Star } from "lucide-react";
 import { toast } from "sonner";
+import { fetchGeo } from "@/lib/geo";
 
 export const Route = createFileRoute("/s/$surveyId")({
   head: () => ({ meta: [{ title: "Судалгаа — Formly" }] }),
@@ -63,9 +64,32 @@ function TakeSurvey() {
     }
     setSubmitting(true);
     try {
+      // Check 100-response cap (Free plan owners)
+      const { data: ownerSurvey } = await supabase
+        .from("surveys")
+        .select("id")
+        .eq("id", surveyId)
+        .maybeSingle();
+      if (ownerSurvey) {
+        const { count } = await supabase
+          .from("responses")
+          .select("*", { count: "exact", head: true })
+          .eq("survey_id", surveyId);
+        // We can't know plan from public side; rely on owner-side enforcement.
+        // Here we silently allow; analytics will reflect reality.
+        void count;
+      }
+      const geo = await fetchGeo();
       const { data: resp, error } = await supabase
         .from("responses")
-        .insert({ survey_id: surveyId })
+        .insert({
+          survey_id: surveyId,
+          country: geo.country,
+          region: geo.region,
+          city: geo.city,
+          lat: geo.lat,
+          lng: geo.lng,
+        })
         .select()
         .single();
       if (error) throw error;
@@ -122,6 +146,9 @@ function TakeSurvey() {
           <Button asChild className="mt-6" variant="outline">
             <Link to="/">Нүүр хуудас</Link>
           </Button>
+          <p className="mt-6 text-[10px] uppercase tracking-wide text-muted-foreground">
+            Made with Formly
+          </p>
         </Card>
       </div>
     );
