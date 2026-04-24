@@ -4,7 +4,9 @@ import { useAuth } from "@/components/formly/AuthProvider";
 import { Logo } from "@/components/formly/Logo";
 import { useI18n, LanguageSwitcher } from "@/components/formly/I18nProvider";
 import { ThemeToggle } from "@/components/formly/ThemeProvider";
+import { usePlan } from "@/components/formly/PlanProvider";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard,
   PlusCircle,
@@ -12,6 +14,9 @@ import {
   Shield,
   LogOut,
   Loader2,
+  CreditCard,
+  Users,
+  Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +27,7 @@ export const Route = createFileRoute("/_app")({
 function AppLayout() {
   const { user, loading, isAdmin, signOut } = useAuth();
   const { t } = useI18n();
+  const { plan } = usePlan();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -41,6 +47,9 @@ function AppLayout() {
     { to: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
     { to: "/surveys/new", label: t("nav.new"), icon: PlusCircle },
     { to: "/ai", label: t("nav.ai"), icon: Sparkles },
+    { to: "/pricing", label: t("nav.pricing"), icon: Tag },
+    { to: "/billing", label: t("nav.billing"), icon: CreditCard },
+    { to: "/team", label: t("nav.team"), icon: Users },
     ...(isAdmin
       ? [{ to: "/admin", label: t("nav.admin"), icon: Shield }]
       : []),
@@ -78,7 +87,12 @@ function AppLayout() {
         <div className="border-t p-3">
           <div className="mb-2 rounded-lg bg-muted/50 px-3 py-2 text-xs">
             <p className="truncate font-medium text-foreground">{user.email}</p>
-            <p className="text-muted-foreground">{isAdmin ? t("role.admin") : t("role.user")}</p>
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <span>{isAdmin ? t("role.admin") : t("role.user")}</span>
+              <Badge variant={plan === "free" ? "secondary" : "default"} className="h-4 px-1.5 text-[10px]">
+                {t(`plan.${plan}` as "plan.free")}
+              </Badge>
+            </div>
           </div>
           <Button
             variant="ghost"
