@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SSurveyIdRouteImport } from './routes/s.$surveyId'
+import { Route as AppPricingRouteImport } from './routes/_app.pricing'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppAiRouteImport } from './routes/_app.ai'
 import { Route as AppAdminRouteImport } from './routes/_app.admin'
@@ -37,6 +38,11 @@ const SSurveyIdRoute = SSurveyIdRouteImport.update({
   id: '/s/$surveyId',
   path: '/s/$surveyId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppPricingRoute = AppPricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AppAdminRoute
   '/ai': typeof AppAiRoute
   '/dashboard': typeof AppDashboardRoute
+  '/pricing': typeof AppPricingRoute
   '/s/$surveyId': typeof SSurveyIdRoute
   '/surveys/new': typeof AppSurveysNewRoute
   '/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AppAdminRoute
   '/ai': typeof AppAiRoute
   '/dashboard': typeof AppDashboardRoute
+  '/pricing': typeof AppPricingRoute
   '/s/$surveyId': typeof SSurveyIdRoute
   '/surveys/new': typeof AppSurveysNewRoute
   '/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/_app/admin': typeof AppAdminRoute
   '/_app/ai': typeof AppAiRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/pricing': typeof AppPricingRoute
   '/s/$surveyId': typeof SSurveyIdRoute
   '/_app/surveys/new': typeof AppSurveysNewRoute
   '/_app/surveys/$id/analytics': typeof AppSurveysIdAnalyticsRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/ai'
     | '/dashboard'
+    | '/pricing'
     | '/s/$surveyId'
     | '/surveys/new'
     | '/surveys/$id/analytics'
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/ai'
     | '/dashboard'
+    | '/pricing'
     | '/s/$surveyId'
     | '/surveys/new'
     | '/surveys/$id/analytics'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
     | '/_app/admin'
     | '/_app/ai'
     | '/_app/dashboard'
+    | '/_app/pricing'
     | '/s/$surveyId'
     | '/_app/surveys/new'
     | '/_app/surveys/$id/analytics'
@@ -166,6 +178,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/s/$surveyId'
       preLoaderRoute: typeof SSurveyIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/pricing': {
+      id: '/_app/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof AppPricingRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/dashboard': {
       id: '/_app/dashboard'
@@ -209,6 +228,7 @@ interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
   AppAiRoute: typeof AppAiRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppPricingRoute: typeof AppPricingRoute
   AppSurveysNewRoute: typeof AppSurveysNewRoute
   AppSurveysIdAnalyticsRoute: typeof AppSurveysIdAnalyticsRoute
 }
@@ -217,6 +237,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRoute,
   AppAiRoute: AppAiRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppPricingRoute: AppPricingRoute,
   AppSurveysNewRoute: AppSurveysNewRoute,
   AppSurveysIdAnalyticsRoute: AppSurveysIdAnalyticsRoute,
 }
@@ -232,3 +253,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
