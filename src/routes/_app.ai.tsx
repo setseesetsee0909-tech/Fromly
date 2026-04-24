@@ -103,6 +103,12 @@ function AIAssistant() {
       </div>
 
       <Card className="p-6">
+        {!limits.aiEnabled && (
+          <div className="mb-4 flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+            <span className="flex items-center gap-2"><Lock className="h-4 w-4" /> {t("limit.aiPro")}</span>
+            <Button asChild size="sm"><Link to="/pricing">{t("plan.upgrade")}</Link></Button>
+          </div>
+        )}
         <label className="mb-2 block text-sm font-medium">Та ямар судалгаа үүсгэх вэ?</label>
         <Textarea
           value={prompt}
