@@ -124,40 +124,55 @@ function Team() {
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{t("team.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("team.desc")}</p>
       </div>
 
       {!ws ? (
-        <Card className="p-6 space-y-3">
+        <Card className="mx-auto max-w-xl p-6 space-y-3">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Workspace name" />
           <Button onClick={createWs} disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{t("team.create")}</Button>
         </Card>
       ) : (
-        <>
-          <Card className="p-6">
-            <p className="text-sm text-muted-foreground">Workspace</p>
-            <p className="text-xl font-semibold">{ws.name}</p>
-          </Card>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-1">
+            <Card className="p-6">
+              <p className="text-sm text-muted-foreground">Workspace</p>
+              <p className="text-xl font-semibold">{ws.name}</p>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-center">
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-2xl font-bold">{members.length}</p>
+                  <p className="text-xs text-muted-foreground">{t("team.member")}</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-2xl font-bold">{plan}</p>
+                  <p className="text-xs text-muted-foreground">Plan</p>
+                </div>
+              </div>
+            </Card>
 
-          <Card className="p-6">
-            <p className="mb-3 font-semibold">{t("team.invite")}</p>
-            <div className="flex gap-2">
-              <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" />
-              <Button onClick={invite} disabled={busy || !email.trim()}>{t("team.invite")}</Button>
-            </div>
-          </Card>
+            <Card className="p-6">
+              <p className="mb-3 font-semibold">{t("team.invite")}</p>
+              <div className="flex flex-col gap-2">
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" />
+                <Button onClick={invite} disabled={busy || !email.trim()}>{t("team.invite")}</Button>
+              </div>
+            </Card>
+          </div>
 
-          <Card className="p-6">
+          <Card className="p-6 lg:col-span-2">
             <p className="mb-3 font-semibold">{t("team.member")}</p>
             {members.length === 0 ? (
-              <p className="text-sm text-muted-foreground">—</p>
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
+                <Users className="h-10 w-10 text-muted-foreground" />
+                <p className="mt-3 text-sm text-muted-foreground">—</p>
+              </div>
             ) : (
               <div className="divide-y">
                 {members.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between py-2">
+                  <div key={m.id} className="flex items-center justify-between py-3">
                     <div>
                       <p className="text-sm font-medium">{m.email}</p>
                       <Badge variant="secondary" className="mt-1">{m.role}</Badge>
@@ -170,7 +185,7 @@ function Team() {
               </div>
             )}
           </Card>
-        </>
+        </div>
       )}
     </div>
   );

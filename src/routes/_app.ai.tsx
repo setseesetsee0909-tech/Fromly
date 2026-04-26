@@ -95,14 +95,22 @@ function AIAssistant() {
     }
   };
 
+  const examples = [
+    "Кофе шопын үйлчилгээний чанарын талаар 5 асуултын судалгаа",
+    "Ажилтны сэтгэл ханамжийн жилийн судалгаа",
+    "Онлайн дэлгүүрийн NPS судалгаа",
+    "Сургалтын чанарын үнэлгээ",
+  ];
+
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">AI туслах</h1>
         <p className="text-sm text-muted-foreground">AI Assistant — санаагаа бичээд судалгаа автоматаар үүсгэгдэнэ</p>
       </div>
 
-      <Card className="p-6">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="p-6 lg:col-span-2">
         {!limits.aiEnabled && (
           <div className="mb-4 flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
             <span className="flex items-center gap-2"><Lock className="h-4 w-4" /> {t("limit.aiPro")}</span>
@@ -114,13 +122,32 @@ function AIAssistant() {
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Жишээ нь: Кофе шопын үйлчилгээний чанарын талаар 5 асуултын судалгаа..."
-          rows={4}
+          rows={6}
         />
         <Button onClick={generate} disabled={busy} className="mt-4 gap-2">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
           {busy ? "Үүсгэж байна..." : "Үүсгэх"}
         </Button>
-      </Card>
+        </Card>
+
+        <Card className="p-6">
+          <p className="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <Sparkles className="h-4 w-4 text-primary" /> Жишээ санаа
+          </p>
+          <div className="space-y-2">
+            {examples.map((ex) => (
+              <button
+                key={ex}
+                type="button"
+                onClick={() => setPrompt(ex)}
+                className="w-full rounded-lg border bg-muted/30 p-3 text-left text-xs text-muted-foreground transition hover:border-primary hover:bg-primary/5 hover:text-foreground"
+              >
+                {ex}
+              </button>
+            ))}
+          </div>
+        </Card>
+      </div>
 
       {result && (
         <Card className="p-6 space-y-4">

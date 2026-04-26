@@ -8,7 +8,7 @@ import { usePlan } from "@/components/formly/PlanProvider";
 import { useI18n } from "@/components/formly/I18nProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { PLAN_LIMITS, PLAN_PRICE, isUnlimited } from "@/lib/plans";
-import { CreditCard, FileText, MessageSquare } from "lucide-react";
+import { CreditCard, FileText, MessageSquare, Sparkles, Download, Map, Users, Check, X } from "lucide-react";
 
 export const Route = createFileRoute("/_app/billing")({
   head: () => ({ meta: [{ title: "Төлбөр — Formly" }] }),
@@ -44,13 +44,24 @@ function Billing() {
   const limits = PLAN_LIMITS[plan];
   const price = PLAN_PRICE[plan];
 
+  const features = [
+    { label: lang === "mn" ? "AI үүсгэгч" : "AI generator", on: limits.aiEnabled, icon: Sparkles },
+    { label: lang === "mn" ? "CSV / PDF экспорт" : "CSV / PDF export", on: limits.export, icon: Download },
+    { label: lang === "mn" ? "Газрын зураг" : "Geo map", on: limits.map, icon: Map },
+    { label: lang === "mn" ? "Багийн ажиллагаа" : "Team workspace", on: plan === "team", icon: Users },
+  ];
+
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{t("billing.title")}</h1>
+        <p className="text-sm text-muted-foreground">
+          {lang === "mn" ? "Захиалга, ашиглалт болон боломжуудыг нэг дороос" : "Subscription, usage & features at a glance"}
+        </p>
       </div>
 
-      <Card className="p-6">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="p-6 lg:col-span-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-primary/10 p-3 text-primary">
@@ -68,7 +79,19 @@ function Billing() {
             <Link to="/pricing">{t("plan.upgrade")}</Link>
           </Button>
         </div>
-      </Card>
+        </Card>
+
+        <Card className="p-6">
+          <p className="mb-3 text-sm font-semibold">
+            {lang === "mn" ? "Хэрэглэгч" : "Account"}
+          </p>
+          <p className="truncate text-sm text-muted-foreground">{user?.email}</p>
+          <div className="mt-3 flex items-center gap-2">
+            <Badge variant={plan === "free" ? "secondary" : "default"} className="capitalize">{plan}</Badge>
+            <span className="text-xs text-muted-foreground">{lang === "mn" ? "идэвхтэй" : "active"}</span>
+          </div>
+        </Card>
+      </div>
 
       <Card className="p-6">
         <p className="mb-4 font-semibold">{t("billing.usage")}</p>
@@ -87,6 +110,26 @@ function Billing() {
             max={limits.responsesPerSurvey === Infinity ? Infinity : limits.responsesPerSurvey * Math.max(1, surveyCount)}
             unlimitedLabel={t("billing.unlimited")}
           />
+        </div>
+      </Card>
+
+      <Card className="p-6">
+        <p className="mb-4 font-semibold">{lang === "mn" ? "Багцын боломжууд" : "Plan features"}</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {features.map((f) => (
+            <div key={f.label} className={`flex items-center gap-3 rounded-xl border p-3 ${f.on ? "" : "opacity-60"}`}>
+              <div className={`rounded-lg p-2 ${f.on ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                <f.icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{f.label}</p>
+                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                  {f.on ? <Check className="h-3 w-3 text-primary" /> : <X className="h-3 w-3" />}
+                  {f.on ? (lang === "mn" ? "Нээлттэй" : "Enabled") : (lang === "mn" ? "Хаалттай" : "Locked")}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
     </div>
