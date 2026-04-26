@@ -196,32 +196,6 @@ function Analytics() {
         </div>
       </div>
 
-      <Card className="p-6">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="flex items-center gap-2 font-semibold">
-            <MapPin className="h-4 w-4 text-primary" /> {t("analytics.map")}
-          </p>
-          {!limits.map && (
-            <Badge variant="outline" className="gap-1">
-              <Lock className="h-3 w-3" /> Pro
-            </Badge>
-          )}
-        </div>
-        {!limits.map ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-12 text-center">
-            <Lock className="h-8 w-8 text-muted-foreground" />
-            <p className="mt-2 text-sm">{t("limit.mapPro")}</p>
-            <Button asChild className="mt-3" size="sm">
-              <a href="/pricing">{t("plan.upgrade")}</a>
-            </Button>
-          </div>
-        ) : geoPoints.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">—</p>
-        ) : (
-          <ResponseMap points={geoPoints} />
-        )}
-      </Card>
-
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="p-5">
           <div className="flex items-center justify-between">
@@ -254,7 +228,46 @@ function Analytics() {
         </Card>
       </div>
 
-      <div className="space-y-4">
+      <Card className="overflow-hidden p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="flex items-center gap-2 text-lg font-semibold">
+              <MapPin className="h-5 w-5 text-primary" /> {t("analytics.map")}
+            </p>
+            <p className="text-xs text-muted-foreground">Хариулагчдын газарзүйн тархалт</p>
+          </div>
+          {!limits.map && (
+            <Badge variant="outline" className="gap-1">
+              <Lock className="h-3 w-3" /> Pro
+            </Badge>
+          )}
+        </div>
+        {!limits.map ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed bg-muted/20 py-16 text-center">
+            <div className="rounded-full bg-primary/10 p-3">
+              <Lock className="h-6 w-6 text-primary" />
+            </div>
+            <p className="mt-3 max-w-sm text-sm">{t("limit.mapPro")}</p>
+            <Button asChild className="mt-4" size="sm">
+              <a href="/pricing">{t("plan.upgrade")}</a>
+            </Button>
+          </div>
+        ) : geoPoints.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed bg-muted/20 py-16 text-center">
+            <div className="rounded-full bg-primary/10 p-3">
+              <MapPin className="h-6 w-6 text-primary" />
+            </div>
+            <p className="mt-3 text-sm font-medium">Газарзүйн өгөгдөл хараахан алга</p>
+            <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+              Судалгаагаа нийтэлж, хариулт хүлээн аваад дахин шалгана уу.
+            </p>
+          </div>
+        ) : (
+          <ResponseMap points={geoPoints} />
+        )}
+      </Card>
+
+      <div className="grid gap-4 lg:grid-cols-2">
         {questions.map((q, qi) => {
           const qAns = answers.filter((a) => a.question_id === q.id);
           if (q.type === "multiple_choice") {
