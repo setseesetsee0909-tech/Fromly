@@ -46,8 +46,8 @@ function Billing() {
 
   const features = [
     { label: lang === "mn" ? "AI үүсгэгч" : "AI generator", on: limits.aiEnabled, icon: Sparkles },
-    { label: lang === "mn" ? "CSV / PDF экспорт" : "CSV / PDF export", on: limits.exportEnabled, icon: Download },
-    { label: lang === "mn" ? "Газрын зураг" : "Geo map", on: limits.mapEnabled, icon: Map },
+    { label: lang === "mn" ? "CSV / PDF экспорт" : "CSV / PDF export", on: limits.export, icon: Download },
+    { label: lang === "mn" ? "Газрын зураг" : "Geo map", on: limits.map, icon: Map },
     { label: lang === "mn" ? "Багийн ажиллагаа" : "Team workspace", on: plan === "team", icon: Users },
   ];
 
