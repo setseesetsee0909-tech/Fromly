@@ -94,9 +94,8 @@ function Analytics() {
       );
       setGeoPoints(
         (rs ?? [])
-          .filter((r): r is { id: string; lat: number; lng: number; city: string | null; country: string | null } =>
-            typeof r.lat === "number" && typeof r.lng === "number")
-          .map((r) => ({ lat: r.lat, lng: r.lng, city: r.city, country: r.country })),
+          .filter((r) => typeof r.lat === "number" && typeof r.lng === "number")
+          .map((r) => ({ lat: r.lat as number, lng: r.lng as number, city: r.city, country: r.country })),
       );
 
       if (rs && rs.length) {
