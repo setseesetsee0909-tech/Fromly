@@ -40,6 +40,12 @@ interface A {
   question_id: string;
   value: unknown;
 }
+interface R {
+  id: string;
+  submitted_at: string;
+  city: string | null;
+  country: string | null;
+}
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--secondary))", "hsl(var(--accent))", "#10b981", "#f59e0b", "#ec4899"];
 
@@ -51,6 +57,8 @@ function Analytics() {
   const [survey, setSurvey] = useState<{ title: string; description: string | null; is_published: boolean } | null>(null);
   const [questions, setQuestions] = useState<Q[]>([]);
   const [answers, setAnswers] = useState<A[]>([]);
+  const [responses, setResponses] = useState<R[]>([]);
+  const [answersByResp, setAnswersByResp] = useState<Record<string, Record<string, unknown>>>({});
   const [responseCount, setResponseCount] = useState(0);
   const [geoPoints, setGeoPoints] = useState<{ lat: number; lng: number; city: string | null; country: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,9 +81,17 @@ function Analytics() {
 
       const { data: rs, count } = await supabase
         .from("responses")
-        .select("id, lat, lng, city, country", { count: "exact" })
+        .select("id, lat, lng, city, country, submitted_at", { count: "exact" })
         .eq("survey_id", id);
       setResponseCount(count ?? 0);
+      setResponses(
+        (rs ?? []).map((r) => ({
+          id: r.id,
+          submitted_at: r.submitted_at,
+          city: r.city,
+          country: r.country,
+        })),
+      );
       setGeoPoints(
         (rs ?? [])
           .filter((r): r is { id: string; lat: number; lng: number; city: string | null; country: string | null } =>
@@ -86,9 +102,16 @@ function Analytics() {
       if (rs && rs.length) {
         const { data: ans } = await supabase
           .from("answers")
-          .select("question_id, value")
+          .select("question_id, value, response_id")
           .in("response_id", rs.map((r) => r.id));
         setAnswers(ans ?? []);
+        const grouped: Record<string, Record<string, unknown>> = {};
+        for (const a of ans ?? []) {
+          const rid = (a as { response_id: string }).response_id;
+          if (!grouped[rid]) grouped[rid] = {};
+          grouped[rid][a.question_id] = a.value;
+        }
+        setAnswersByResp(grouped);
       }
       setLoading(false);
     })();
@@ -125,12 +148,36 @@ function Analytics() {
       navigate({ to: "/pricing" });
       return;
     }
-    const header = ["question", "answer"];
-    const rows = answers.map((a) => {
-      const q = questions.find((x) => x.id === a.question_id);
-      return [JSON.stringify(q?.label ?? ""), JSON.stringify(String(a.value))];
+    if (responses.length === 0) {
+      toast.error("Одоогоор хариулт байхгүй байна");
+      return;
+    }
+    const esc = (v: unknown) => {
+      let s: string;
+      if (v == null) s = "";
+      else if (typeof v === "string") s = v;
+      else if (typeof v === "number" || typeof v === "boolean") s = String(v);
+      else s = JSON.stringify(v);
+      return `"${s.replace(/"/g, '""')}"`;
+    };
+    const header = [
+      "response_id",
+      "submitted_at",
+      "country",
+      "city",
+      ...questions.map((q) => q.label),
+    ];
+    const rows = responses.map((r) => {
+      const a = answersByResp[r.id] ?? {};
+      return [
+        r.id,
+        r.submitted_at,
+        r.country ?? "",
+        r.city ?? "",
+        ...questions.map((q) => a[q.id]),
+      ].map(esc);
     });
-    const csv = [header.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const csv = "\uFEFF" + [header.map(esc).join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -138,6 +185,7 @@ function Analytics() {
     a.download = `${survey?.title ?? "survey"}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    toast.success(`${responses.length} хариулт татагдлаа`);
   };
 
   if (loading) {
