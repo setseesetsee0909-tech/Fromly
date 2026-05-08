@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Globe2, MapPin, Users } from "lucide-react";
 
-interface Point { lat: number; lng: number; city?: string | null; country?: string | null }
+interface Point {
+  lat: number;
+  lng: number;
+  city?: string | null;
+  country?: string | null;
+}
 
-/**
- * Lightweight Leaflet map. Loads CSS + library on demand client-side
- * so SSR build doesn't try to import 'leaflet' (which touches `window`).
- */
 export function ResponseMap({ points }: { points: Point[] }) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<unknown>(null);
@@ -14,9 +15,9 @@ export function ResponseMap({ points }: { points: Point[] }) {
   const stats = useMemo(() => {
     const countries = new Map<string, number>();
     const cities = new Set<string>();
-    points.forEach((p) => {
-      if (p.country) countries.set(p.country, (countries.get(p.country) ?? 0) + 1);
-      if (p.city) cities.add(`${p.city}|${p.country ?? ""}`);
+    points.forEach((point) => {
+      if (point.country) countries.set(point.country, (countries.get(point.country) ?? 0) + 1);
+      if (point.city) cities.add(`${point.city}|${point.country ?? ""}`);
     });
     const top = [...countries.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
     return { countries: countries.size, cities: cities.size, top };
@@ -27,7 +28,6 @@ export function ResponseMap({ points }: { points: Point[] }) {
     let cancelled = false;
 
     (async () => {
-      // inject CSS once
       if (!document.getElementById("leaflet-css")) {
         const link = document.createElement("link");
         link.id = "leaflet-css";
@@ -42,49 +42,69 @@ export function ResponseMap({ points }: { points: Point[] }) {
       const existing = mapRef.current as any;
       if (existing) existing.remove();
 
-      const map = L.map(ref.current, { scrollWheelZoom: false, zoomControl: true }).setView([20, 0], 2);
+      const map = L.map(ref.current, { scrollWheelZoom: false, zoomControl: true }).setView(
+        [20, 0],
+        2,
+      );
       L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
         attribution: "© OpenStreetMap, © CARTO",
         maxZoom: 18,
       }).addTo(map);
 
-      const valid = points.filter((p) => typeof p.lat === "number" && typeof p.lng === "number");
-      // Group nearby points (rounded to 1 decimal ~ 11km) into clusters
-      const clusters = new Map<string, { lat: number; lng: number; count: number; labels: string[] }>();
-      valid.forEach((p) => {
-        const key = `${p.lat.toFixed(1)},${p.lng.toFixed(1)}`;
-        const c = clusters.get(key);
-        const label = `${p.city ?? ""}${p.city && p.country ? ", " : ""}${p.country ?? ""}`.trim() || "—";
-        if (c) {
-          c.count++;
-          c.lat = (c.lat * (c.count - 1) + p.lat) / c.count;
-          c.lng = (c.lng * (c.count - 1) + p.lng) / c.count;
-          if (c.labels.length < 4) c.labels.push(label);
+      const valid = points.filter(
+        (point) => typeof point.lat === "number" && typeof point.lng === "number",
+      );
+      const clusters = new Map<
+        string,
+        { lat: number; lng: number; count: number; labels: string[] }
+      >();
+
+      valid.forEach((point) => {
+        const key = `${point.lat.toFixed(1)},${point.lng.toFixed(1)}`;
+        const label =
+          `${point.city ?? ""}${point.city && point.country ? ", " : ""}${point.country ?? ""}`.trim() ||
+          "-";
+        const cluster = clusters.get(key);
+        if (cluster) {
+          cluster.count += 1;
+          cluster.lat = (cluster.lat * (cluster.count - 1) + point.lat) / cluster.count;
+          cluster.lng = (cluster.lng * (cluster.count - 1) + point.lng) / cluster.count;
+          if (cluster.labels.length < 4) cluster.labels.push(label);
         } else {
-          clusters.set(key, { lat: p.lat, lng: p.lng, count: 1, labels: [label] });
+          clusters.set(key, { lat: point.lat, lng: point.lng, count: 1, labels: [label] });
         }
       });
-      clusters.forEach((c) => {
-        const size = Math.min(46, 22 + Math.log2(c.count + 1) * 6);
-        const html = `<div style="display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:9999px;background:hsl(217,91%,60%);color:white;font-weight:700;font-size:12px;border:3px solid white;box-shadow:0 4px 12px hsla(217,91%,60%,0.45)">${c.count}</div>`;
-        const icon = L.divIcon({ className: "", html, iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
-        L.marker([c.lat, c.lng], { icon })
+
+      clusters.forEach((cluster) => {
+        const size = Math.min(46, 22 + Math.log2(cluster.count + 1) * 6);
+        const html = `<div style="display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:9999px;background:hsl(217,91%,60%);color:white;font-weight:700;font-size:12px;border:3px solid white;box-shadow:0 4px 12px hsla(217,91%,60%,0.45)">${cluster.count}</div>`;
+        const icon = L.divIcon({
+          className: "",
+          html,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+        });
+        L.marker([cluster.lat, cluster.lng], { icon })
           .addTo(map)
-          .bindPopup(`<strong>${c.count} хариулт</strong><br/>${c.labels.join("<br/>")}`);
+          .bindPopup(
+            `<strong>${cluster.count} хариулт</strong><br/>${cluster.labels.join("<br/>")}`,
+          );
       });
+
       if (valid.length) {
-        const bounds = L.latLngBounds(valid.map((p) => [p.lat, p.lng]));
+        const bounds = L.latLngBounds(valid.map((point) => [point.lat, point.lng]));
         map.fitBounds(bounds, { padding: [30, 30], maxZoom: 6 });
       }
+
       mapRef.current = map;
     })();
 
     return () => {
       cancelled = true;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const m = mapRef.current as any;
-      if (m) {
-        m.remove();
+      const map = mapRef.current as any;
+      if (map) {
+        map.remove();
         mapRef.current = null;
       }
     };
@@ -114,7 +134,7 @@ export function ResponseMap({ points }: { points: Point[] }) {
         <div className="rounded-xl border bg-muted/30 p-3">
           <div className="text-xs text-muted-foreground">Тэргүүлэгч</div>
           <p className="mt-1 truncate text-sm font-semibold">
-            {stats.top[0] ? `${stats.top[0][0]} · ${stats.top[0][1]}` : "—"}
+            {stats.top[0] ? `${stats.top[0][0]} · ${stats.top[0][1]}` : "-"}
           </p>
         </div>
       </div>

@@ -8,8 +8,8 @@ export const PLAN_LIMITS: Record<Plan, { surveys: number; responsesPerSurvey: nu
 
 export const PLAN_PRICE: Record<Plan, { mn: string; en: string; usd: number }> = {
   free: { mn: "Үнэгүй", en: "Free", usd: 0 },
-  pro: { mn: "$12 / сар", en: "$12 / mo", usd: 12 },
-  team: { mn: "$39 / сар", en: "$39 / mo", usd: 39 },
+  pro: { mn: "$10 / сар", en: "$10 / mo", usd: 10 },
+  team: { mn: "$20 / сар", en: "$20 / mo", usd: 20 },
 };
 
 export function isUnlimited(n: number) {

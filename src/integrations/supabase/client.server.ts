@@ -2,18 +2,49 @@
 // Server-side Supabase client with service role key - bypasses RLS.
 // Use this for admin operations in server functions and server routes only.
 // For user-authenticated queries (with RLS), use the auth middleware instead.
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from './types';
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./types";
 
-function createSupabaseAdminClient() {
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+function readEnv(...names: string[]) {
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+    if (value) {
+      return value;
+    }
+  }
 
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  return "";
+}
+
+function assertServiceRoleKey(value: string) {
+  const looksMissing = !value;
+  const looksPlaceholder =
+    value.length < 40 ||
+    value.includes("your-service-role-key") ||
+    value === ".222..";
+
+  if (looksMissing || looksPlaceholder) {
     throw new Error(
-      'Missing Supabase server environment variables. Ensure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set.'
+      "Invalid Supabase service role key. Update SUPABASE_SERVICE_ROLE_KEY with the real service_role secret from Supabase.",
     );
   }
+}
+
+function createSupabaseAdminClient() {
+  const SUPABASE_URL = readEnv("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL", "VITE_SUPABASE_URL");
+  const SUPABASE_SERVICE_ROLE_KEY = readEnv(
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "SUPABASE_SERVICE_KEY",
+    "SUPABASE_SECRET_KEY",
+  );
+
+  if (!SUPABASE_URL) {
+    throw new Error(
+      "Missing Supabase server environment variables. Ensure SUPABASE_URL is set.",
+    );
+  }
+
+  assertServiceRoleKey(SUPABASE_SERVICE_ROLE_KEY);
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: {

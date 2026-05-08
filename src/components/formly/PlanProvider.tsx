@@ -1,4 +1,14 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+"use client";
+
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  type ReactNode,
+} from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthProvider";
 import { PLAN_LIMITS, type Plan } from "@/lib/plans";
@@ -14,7 +24,7 @@ interface Ctx {
 const PlanCtx = createContext<Ctx | undefined>(undefined);
 
 export function PlanProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { session, user } = useAuth();
   const [plan, setPlanState] = useState<Plan>("free");
   const [loading, setLoading] = useState(true);
 
@@ -29,10 +39,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       .select("plan")
       .eq("user_id", user.id)
       .maybeSingle();
-    if (data?.plan) setPlanState(data.plan as Plan);
-    else {
-      // create free row if missing
-      await supabase.from("subscriptions").insert({ user_id: user.id, plan: "free" });
+    if (data?.plan) {
+      setPlanState(data.plan as Plan);
+    } else {
       setPlanState("free");
     }
     setLoading(false);
@@ -42,18 +51,35 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
-  const setPlan = async (p: Plan) => {
-    if (!user) return;
-    const { error } = await supabase
-      .from("subscriptions")
-      .upsert({ user_id: user.id, plan: p, status: "active" }, { onConflict: "user_id" });
-    if (!error) setPlanState(p);
-  };
+  const setPlan = useCallback(async (p: Plan) => {
+    if (!session?.access_token) {
+      throw new Error("Missing signed-in session.");
+    }
+
+    const response = await fetch("/api/billing/change-plan", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ plan: p }),
+    });
+
+    const data = (await response.json()) as { error?: string; plan?: Plan };
+    if (!response.ok) {
+      throw new Error(data.error || "Unable to update subscription.");
+    }
+
+    setPlanState(data.plan ?? p);
+  }, [session]);
+
+  const value = useMemo<Ctx>(
+    () => ({ plan, loading, limits: PLAN_LIMITS[plan], setPlan, refresh }),
+    [loading, plan, refresh, setPlan],
+  );
 
   return (
-    <PlanCtx.Provider value={{ plan, loading, limits: PLAN_LIMITS[plan], setPlan, refresh }}>
-      {children}
-    </PlanCtx.Provider>
+    <PlanCtx.Provider value={value}>{children}</PlanCtx.Provider>
   );
 }
 

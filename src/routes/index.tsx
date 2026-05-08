@@ -1,27 +1,15 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+"use client";
+
+import Link from "next/link";
+import { ArrowRight, BarChart3, CheckCircle2, Layers, Sparkles } from "lucide-react";
+import { LanguageSwitcher, useI18n } from "@/components/formly/I18nProvider";
 import { Logo } from "@/components/formly/Logo";
-import { Button } from "@/components/ui/button";
-import { Sparkles, BarChart3, Layers, ArrowRight, CheckCircle2 } from "lucide-react";
-import { useI18n, LanguageSwitcher } from "@/components/formly/I18nProvider";
 import { ThemeToggle } from "@/components/formly/ThemeProvider";
+import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Formly — Ухаалаг судалгааны платформ" },
-      {
-        name: "description",
-        content: "Formly — AI тусламжтайгаар судалгаа үүсгэж, хариултыг шууд аналитик болгон харах боломжтой орчин үеийн платформ.",
-      },
-      { property: "og:title", content: "Formly — Smart Survey Platform" },
-      { property: "og:description", content: "Create, share & analyze surveys powered by AI." },
-    ],
-  }),
-  component: Landing,
-});
-
-function Landing() {
+export function LandingPage() {
   const { t } = useI18n();
+
   return (
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
@@ -30,16 +18,16 @@ function Landing() {
           <ThemeToggle />
           <LanguageSwitcher className="mr-2" />
           <Button asChild variant="ghost">
-            <Link to="/login">{t("landing.login")}</Link>
+            <Link href="/login">{t("landing.login")}</Link>
           </Button>
           <Button asChild>
-            <Link to="/login">{t("landing.getStarted")}</Link>
+            <Link href="/login">{t("landing.getStarted")}</Link>
           </Button>
         </nav>
       </header>
 
       <main>
-        <section className="mx-auto max-w-7xl px-6 pt-16 pb-24 text-center">
+        <section className="mx-auto max-w-7xl px-6 pb-24 pt-16 text-center">
           <div className="mx-auto inline-flex items-center gap-2 rounded-full border bg-card px-4 py-1.5 text-xs font-medium text-muted-foreground shadow-sm">
             <Sparkles className="h-3.5 w-3.5 text-accent" />
             {t("landing.badge")}
@@ -53,7 +41,7 @@ function Landing() {
           </p>
           <div className="mt-8 flex items-center justify-center gap-3">
             <Button asChild size="lg" className="gap-2">
-              <Link to="/login">
+              <Link href="/login">
                 {t("landing.getStarted")} <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -81,16 +69,16 @@ function Landing() {
                 desc: t("landing.feature3.desc"),
                 color: "text-secondary",
               },
-            ].map((f) => (
+            ].map((feature) => (
               <div
-                key={f.title}
+                key={feature.title}
                 className="rounded-2xl border bg-card p-6 shadow-sm transition hover:shadow-md"
               >
-                <div className={`mb-4 inline-flex rounded-xl bg-muted p-3 ${f.color}`}>
-                  <f.icon className="h-6 w-6" />
+                <div className={`mb-4 inline-flex rounded-xl bg-muted p-3 ${feature.color}`}>
+                  <feature.icon className="h-6 w-6" />
                 </div>
-                <h3 className="text-lg font-semibold">{f.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{f.desc}</p>
+                <h3 className="text-lg font-semibold">{feature.title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{feature.desc}</p>
               </div>
             ))}
           </div>
@@ -101,19 +89,17 @@ function Landing() {
             <div className="grid gap-8 md:grid-cols-2 md:items-center">
               <div>
                 <h2 className="text-3xl font-bold tracking-tight">{t("landing.sectionTitle")}</h2>
-                <p className="mt-4 text-muted-foreground">
-                  {t("landing.sectionDesc")}
-                </p>
+                <p className="mt-4 text-muted-foreground">{t("landing.sectionDesc")}</p>
                 <ul className="mt-6 space-y-3">
                   {[
                     t("landing.bullet1"),
                     t("landing.bullet2"),
                     t("landing.bullet3"),
                     t("landing.bullet4"),
-                  ].map((t) => (
-                    <li key={t} className="flex items-start gap-3">
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-3">
                       <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                      <span className="text-sm">{t}</span>
+                      <span className="text-sm">{item}</span>
                     </li>
                   ))}
                 </ul>

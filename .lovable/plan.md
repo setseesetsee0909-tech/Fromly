@@ -24,7 +24,7 @@
 - **Responsive**: Desktop 1440px, Tablet 768px, Mobile 375px
 - **Хэл**: Монгол үндсэн, тус бүр англи дэд тайлбартай (UI label "Хяналтын самбар / Dashboard" хэв маягаар)
 
-## Backend (Lovable Cloud)
+## Backend
 
 - **Auth**: Email/password нэвтрэлт, session
 - **DB хүснэгтүүд**:

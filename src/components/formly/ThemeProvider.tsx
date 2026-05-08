@@ -1,4 +1,14 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+"use client";
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun } from "lucide-react";
 
@@ -24,16 +34,25 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try { localStorage.setItem("theme", theme); } catch {}
   }, [theme]);
 
+  const setTheme = useCallback((nextTheme: Theme) => {
+    setThemeState(nextTheme);
+  }, []);
+
+  const toggle = useCallback(() => {
+    setThemeState((currentTheme) => (currentTheme === "dark" ? "light" : "dark"));
+  }, []);
+
+  const value = useMemo<Ctx>(
+    () => ({
+      theme,
+      setTheme,
+      toggle,
+    }),
+    [setTheme, theme, toggle],
+  );
+
   return (
-    <ThemeContext.Provider
-      value={{
-        theme,
-        setTheme: setThemeState,
-        toggle: () => setThemeState((t) => (t === "dark" ? "light" : "dark")),
-      }}
-    >
-      {children}
-    </ThemeContext.Provider>
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
   );
 }
 
