@@ -78,7 +78,7 @@ const normalizeGeneratedSurvey = (survey: RawGenerated): Generated => ({
 
 export function AIAssistantPage() {
   const { user } = useAuth();
-  const { limits } = usePlan();
+  const { limits, plan } = usePlan();
   const { t, lang } = useI18n();
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
@@ -164,11 +164,31 @@ export function AIAssistantPage() {
   };
 
   const generate = async () => {
-    if (!limits.aiEnabled) {
+    if (!user) return;
+
+    // Check AI usage limits
+    if (plan === "free") {
+      const { count, error } = await supabase
+        .from("surveys")
+        .select("*", { count: "exact", head: true })
+        .eq("owner_id", user.id);
+
+      if (error) {
+        toast.error(lang === "mn" ? "Алдаа гарлаа" : "Error occurred");
+        return;
+      }
+
+      if ((count || 0) >= limits.aiSurveyLimit) {
+        toast.error(t("limit.aiPro"));
+        router.push("/pricing");
+        return;
+      }
+    } else if (!limits.aiEnabled) {
       toast.error(t("limit.aiPro"));
       router.push("/pricing");
       return;
     }
+
     if (!prompt.trim()) {
       toast.error(
         lang === "mn" ? "Санаагаа бичнэ үү" : "Please describe the survey you want to create",
@@ -387,7 +407,18 @@ export function AIAssistantPage() {
 
       <div className="grid gap-6 xl:grid-cols-5">
         <Card className="p-6 xl:col-span-3">
-          {!limits.aiEnabled && (
+          {plan === "free" && (
+            <div className="mb-4 flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+              <span className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4" /> 
+                {lang === "mn" 
+                  ? `Үнэгүй хэрэглэгчдэд AI ашиглан 3 судалгаа үүсгэх боломжтой` 
+                  : "Free users can create up to 3 surveys with AI"
+                }
+              </span>
+            </div>
+          )}
+          {!limits.aiEnabled && plan !== "free" && (
             <div className="mb-4 flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
               <span className="flex items-center gap-2">
                 <Lock className="h-4 w-4" /> {t("limit.aiPro")}
