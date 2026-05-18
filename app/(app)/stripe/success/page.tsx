@@ -27,7 +27,7 @@ export default function StripeSuccessPage() {
   const { lang } = useI18n();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
-  const [mode, setMode] = useState<"mock" | "live" | null>(null);
+  const [mode, setMode] = useState<"mock" | "test" | "live" | null>(null);
 
   const copy =
     lang === "mn"
@@ -48,6 +48,7 @@ export default function StripeSuccessPage() {
           continue: "Billing нээх",
           supportHint: "Хэрэв эрх тань шинэчлэгдээгүй бол pricing руу буцаад дахин оролдоорой.",
           modeMock: "Туршилтын горим",
+          modeTest: "Stripe test",
           modeLive: "Бодит төлбөр",
           detailTitle: "Юу болж байна вэ?",
           detailLoading1: "Таны checkout session-г шалгаж байна",
@@ -78,6 +79,7 @@ export default function StripeSuccessPage() {
           supportHint:
             "If your access has not changed yet, return to pricing and try the upgrade flow again.",
           modeMock: "Mock mode",
+          modeTest: "Stripe test",
           modeLive: "Live payment",
           detailTitle: "What happens next?",
           detailLoading1: "We confirm your checkout session",
@@ -143,11 +145,15 @@ export default function StripeSuccessPage() {
         });
 
         const raw = await response.text();
-        let data: { error?: string; mode?: "mock" | "live"; plan?: Plan } = {};
+        let data: { error?: string; mode?: "mock" | "test" | "live"; plan?: Plan } = {};
 
         if (raw) {
           try {
-            data = JSON.parse(raw) as { error?: string; mode?: "mock" | "live"; plan?: Plan };
+            data = JSON.parse(raw) as {
+              error?: string;
+              mode?: "mock" | "test" | "live";
+              plan?: Plan;
+            };
           } catch {
             throw new Error(copy.genericError);
           }
@@ -211,7 +217,11 @@ export default function StripeSuccessPage() {
                 <Badge variant="secondary">{copy.eyebrow}</Badge>
                 {mode && (
                   <Badge className="capitalize">
-                    {mode === "mock" ? copy.modeMock : copy.modeLive}
+                    {mode === "mock"
+                      ? copy.modeMock
+                      : mode === "test"
+                        ? copy.modeTest
+                        : copy.modeLive}
                   </Badge>
                 )}
               </div>
@@ -302,7 +312,7 @@ export default function StripeSuccessPage() {
 
             {status === "success" && (
               <div className="rounded-2xl border bg-emerald-500/5 p-4 text-sm text-muted-foreground">
-                {mode === "mock" ? copy.modeMock : copy.modeLive}
+                {mode === "mock" ? copy.modeMock : mode === "test" ? copy.modeTest : copy.modeLive}
               </div>
             )}
           </div>

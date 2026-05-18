@@ -21,14 +21,36 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import type { ManualBillingConfig } from "@/lib/manual-billing";
 import { PLAN_PRICE, isUnlimited } from "@/lib/plans";
 
-export function BillingPage() {
-  const { user } = useAuth();
+interface ManualBillingRequestRow {
+  account_name: string;
+  account_number: string;
+  amount_mnt: number;
+  bank_name: string;
+  created_at: string;
+  id: string;
+  note: string | null;
+  payer_name: string;
+  plan: "free" | "pro" | "team";
+  review_note: string | null;
+  reviewed_at: string | null;
+  status: "pending" | "approved" | "rejected";
+  transfer_reference: string;
+}
+
+interface BillingPageProps {
+  manualConfig: ManualBillingConfig;
+}
+
+export function BillingPage({ manualConfig }: BillingPageProps) {
+  const { session, user } = useAuth();
   const { plan } = usePlan();
   const { t, lang } = useI18n();
   const [surveyCount, setSurveyCount] = useState(0);
   const [responseCount, setResponseCount] = useState(0);
+  const [manualRequests, setManualRequests] = useState<ManualBillingRequestRow[]>([]);
 
   useEffect(() => {
     if (!user) {
@@ -53,8 +75,31 @@ export function BillingPage() {
     })();
   }, [user]);
 
+  useEffect(() => {
+    if (!session?.access_token) {
+      setManualRequests([]);
+      return;
+    }
+
+    void (async () => {
+      const response = await fetch("/api/manual-billing/requests", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data = (await response.json()) as { requests?: ManualBillingRequestRow[] };
+      setManualRequests(Array.isArray(data.requests) ? data.requests : []);
+    })();
+  }, [session?.access_token]);
+
   const { limits } = usePlan();
   const price = PLAN_PRICE[plan];
+  const latestManualRequest = manualRequests[0] ?? null;
   const features = [
     {
       label: lang === "mn" ? "AI үүсгэгч" : "AI survey generation",
@@ -121,6 +166,100 @@ export function BillingPage() {
           </div>
         </Card>
       </div>
+
+      {latestManualRequest ? (
+        <Card className="p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">
+                {lang === "mn" ? "Bank transfer huselt" : "Bank transfer request"}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {lang === "mn"
+                  ? "Manual transfer request-iin suuliin tuluv end haragdana."
+                  : "The latest manual transfer review status appears here."}
+              </p>
+            </div>
+            <Badge
+              variant={
+                latestManualRequest.status === "approved"
+                  ? "default"
+                  : latestManualRequest.status === "rejected"
+                    ? "destructive"
+                    : "secondary"
+              }
+            >
+              {latestManualRequest.status}
+            </Badge>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-xl border p-4">
+              <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                {lang === "mn" ? "Plan" : "Plan"}
+              </p>
+              <p className="mt-1 font-semibold capitalize">{latestManualRequest.plan}</p>
+            </div>
+            <div className="rounded-xl border p-4">
+              <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                {lang === "mn" ? "Amount" : "Amount"}
+              </p>
+              <p className="mt-1 font-semibold">
+                {latestManualRequest.amount_mnt.toLocaleString(lang === "mn" ? "mn-MN" : "en-US")}
+                ₮
+              </p>
+            </div>
+            <div className="rounded-xl border p-4">
+              <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                {lang === "mn" ? "Reference" : "Reference"}
+              </p>
+              <p className="mt-1 break-all font-mono text-sm">{latestManualRequest.transfer_reference}</p>
+            </div>
+            <div className="rounded-xl border p-4">
+              <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                {lang === "mn" ? "Ilgeesen ognoo" : "Submitted"}
+              </p>
+              <p className="mt-1 font-semibold">
+                {new Date(latestManualRequest.created_at).toLocaleString(lang === "mn" ? "mn-MN" : "en-US")}
+              </p>
+            </div>
+          </div>
+
+          {(latestManualRequest.status === "pending" || latestManualRequest.status === "rejected") && (
+            <div className="mt-4 rounded-xl border bg-muted/20 p-4">
+              <p className="text-sm font-semibold">
+                {lang === "mn" ? "Tulbur hiih medeelel" : "Transfer instructions"}
+              </p>
+              <div className="mt-3 grid gap-3 md:grid-cols-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                    {lang === "mn" ? "Bank" : "Bank"}
+                  </p>
+                  <p className="mt-1 font-medium">{manualConfig.bankName}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                    {lang === "mn" ? "Dansny ner" : "Account name"}
+                  </p>
+                  <p className="mt-1 font-medium">{manualConfig.accountName}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+                    {lang === "mn" ? "Dansny dugaar" : "Account number"}
+                  </p>
+                  <p className="mt-1 font-mono text-sm">{manualConfig.accountNumber}</p>
+                </div>
+              </div>
+              {manualConfig.note ? (
+                <p className="mt-3 text-sm text-muted-foreground">{manualConfig.note}</p>
+              ) : null}
+              {latestManualRequest.review_note ? (
+                <p className="mt-3 text-sm text-muted-foreground">{latestManualRequest.review_note}</p>
+              ) : null}
+            </div>
+          )}
+        </Card>
+      ) : null}
 
       <Card className="p-6">
         <p className="mb-4 font-semibold">{t("billing.usage")}</p>

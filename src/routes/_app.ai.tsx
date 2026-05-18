@@ -63,6 +63,10 @@ interface Generated {
   questions: GeneratedQ[];
 }
 
+type SurveyInsertResult = {
+  id: string;
+};
+
 const newId = () => Math.random().toString(36).slice(2);
 
 const normalizeGeneratedSurvey = (survey: RawGenerated): Generated => ({
@@ -87,6 +91,125 @@ export function AIAssistantPage() {
   const [saving, setSaving] = useState(false);
   const [draggingQuestionId, setDraggingQuestionId] = useState<string | null>(null);
   const [dragOverQuestionId, setDragOverQuestionId] = useState<string | null>(null);
+
+  const countAiSurveys = async () => {
+    if (!user) {
+      return 0;
+    }
+
+    const { count, error } = await supabase
+      .from("surveys")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", user.id)
+      .eq("created_with_ai", true);
+
+    if (error) {
+      if (error.message.includes("created_with_ai")) {
+        return 0;
+      }
+
+      throw error;
+    }
+
+    return count ?? 0;
+  };
+
+  const insertSurvey = async (publish: boolean): Promise<SurveyInsertResult> => {
+    const basePayload = {
+      owner_id: user!.id,
+      title: result!.title.trim(),
+      description: result!.description.trim() || null,
+      is_published: publish,
+    };
+
+    const attemptWithAiFlag = await supabase
+      .from("surveys")
+      .insert({
+        ...basePayload,
+        created_with_ai: true,
+      })
+      .select("id")
+      .single();
+
+    if (!attemptWithAiFlag.error) {
+      return attemptWithAiFlag.data;
+    }
+
+    if (!attemptWithAiFlag.error.message.includes("created_with_ai")) {
+      throw attemptWithAiFlag.error;
+    }
+
+    const fallbackAttempt = await supabase
+      .from("surveys")
+      .insert(basePayload)
+      .select("id")
+      .single();
+
+    if (fallbackAttempt.error) {
+      throw fallbackAttempt.error;
+    }
+
+    return fallbackAttempt.data;
+  };
+
+  const ensureAiSurveySaveAccess = async () => {
+    if (plan !== "free") {
+      if (!limits.aiEnabled) {
+        toast.error(t("limit.aiPro"));
+        router.push("/pricing");
+        return false;
+      }
+
+      return true;
+    }
+
+    try {
+      const aiSurveyCount = await countAiSurveys();
+      if (aiSurveyCount >= limits.aiSurveyLimit) {
+        toast.error(
+          lang === "mn"
+            ? `Үнэгүй хэрэглэгчдэд AI ашиглан ${limits.aiSurveyLimit} судалгаа үүсгэх боломжтой.`
+            : `Free users can create up to ${limits.aiSurveyLimit} surveys with AI.`,
+        );
+        router.push("/pricing");
+        return false;
+      }
+    } catch (error) {
+      console.error("Failed to verify AI survey limit before save", error);
+    }
+
+    return true;
+  };
+
+  const ensureAiSurveyAccess = async () => {
+    if (plan === "free") {
+      try {
+        const aiSurveyCount = await countAiSurveys();
+        if (aiSurveyCount >= limits.aiSurveyLimit) {
+          toast.error(
+            lang === "mn"
+              ? `Үнэгүй хэрэглэгчдэд AI ашиглан ${limits.aiSurveyLimit} судалгаа үүсгэх боломжтой.`
+              : `Free users can create up to ${limits.aiSurveyLimit} surveys with AI.`,
+          );
+          router.push("/pricing");
+          return false;
+        }
+      } catch {
+        toast.error(lang === "mn" ? "Алдаа гарлаа" : "Error occurred");
+        return false;
+      }
+
+      return true;
+    }
+
+    if (!limits.aiEnabled) {
+      toast.error(t("limit.aiPro"));
+      router.push("/pricing");
+      return false;
+    }
+
+    return true;
+  };
 
   const addQuestion = () =>
     setResult((current) =>
@@ -166,24 +289,7 @@ export function AIAssistantPage() {
   const generate = async () => {
     if (!user) return;
 
-    // Check AI usage limits
-    if (plan === "free") {
-      const { count, error } = await supabase
-        .from("surveys")
-        .select("*", { count: "exact", head: true })
-        .eq("owner_id", user.id);
-
-      if (error) {
-        toast.error(lang === "mn" ? "Алдаа гарлаа" : "Error occurred");
-        return;
-      }
-
-      if ((count || 0) >= limits.aiSurveyLimit) {
-        toast.error(t("limit.aiPro"));
-        router.push("/pricing");
-        return;
-      }
-    } else if (!limits.aiEnabled) {
+    if (!limits.aiEnabled) {
       toast.error(t("limit.aiPro"));
       router.push("/pricing");
       return;
@@ -208,7 +314,10 @@ export function AIAssistantPage() {
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || (lang === "mn" ? "AI үүсгэхэд алдаа гарлаа" : "Failed to generate AI survey"));
+        throw new Error(
+          data.error ||
+            (lang === "mn" ? "AI үүсгэхэд алдаа гарлаа" : "Failed to generate AI survey"),
+        );
       }
 
       setResult(normalizeGeneratedSurvey(data.survey as RawGenerated));
@@ -242,21 +351,14 @@ export function AIAssistantPage() {
       return;
     }
 
+    const hasAiAccess = await ensureAiSurveySaveAccess();
+    if (!hasAiAccess) {
+      return;
+    }
+
     setSaving(true);
     try {
-      const { data: survey, error } = await supabase
-        .from("surveys")
-        .insert({
-          owner_id: user.id,
-          title: result.title.trim(),
-          description: result.description.trim() || null,
-          is_published: publish,
-        })
-        .select()
-        .single();
-      if (error) {
-        throw error;
-      }
+      const survey = await insertSurvey(publish);
 
       const rows = result.questions.map((question, index) => ({
         survey_id: survey.id,
@@ -270,6 +372,7 @@ export function AIAssistantPage() {
       }));
       const { error: questionError } = await supabase.from("questions").insert(rows);
       if (questionError) {
+        await supabase.from("surveys").delete().eq("id", survey.id);
         throw questionError;
       }
 
@@ -410,11 +513,10 @@ export function AIAssistantPage() {
           {plan === "free" && (
             <div className="mb-4 flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
               <span className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4" /> 
-                {lang === "mn" 
-                  ? `Үнэгүй хэрэглэгчдэд AI ашиглан 3 судалгаа үүсгэх боломжтой` 
-                  : "Free users can create up to 3 surveys with AI"
-                }
+                <Sparkles className="h-4 w-4" />
+                {lang === "mn"
+                  ? `Үнэгүй хэрэглэгчдэд AI ашиглан 3 судалгаа үүсгэх боломжтой`
+                  : "Free users can create up to 3 surveys with AI"}
               </span>
             </div>
           )}

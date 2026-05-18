@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { TakeSurveyPage } from "@/routes/s.$surveyId";
 import { getPublicSurveyPreview } from "@/lib/public-surveys.server";
 
-const FALLBACK_TITLE = "UUNII Creation Hub survey";
+const FALLBACK_TITLE = "Formly survey";
 const FALLBACK_DESCRIPTION = "Open this survey link and send your response online.";
 
 function trimDescription(description: string | null | undefined) {
@@ -49,7 +49,7 @@ export async function generateMetadata({
   const canonicalUrl = appOrigin ? `${appOrigin}${pagePath}` : undefined;
   const imageUrl = appOrigin ? `${appOrigin}${imagePath}` : imagePath;
 
-  const title = survey ? `${survey.title} | UUNII Creation Hub` : FALLBACK_TITLE;
+  const title = survey?.title?.trim() || FALLBACK_TITLE;
   const description = trimDescription(survey?.description);
 
   return {
@@ -68,7 +68,7 @@ export async function generateMetadata({
       title,
       description,
       type: "website",
-      siteName: "UUNII Creation Hub",
+      siteName: "Formly",
       url: canonicalUrl,
       images: [
         {

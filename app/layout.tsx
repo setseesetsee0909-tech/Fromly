@@ -9,8 +9,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "UUNII Creation Hub",
-  description: "Survey and creation hub powered by the existing TanStack app inside Next.js.",
+  title: "Formly",
+  description: "Create, share, and analyze surveys with Formly.",
 };
 
 export default function RootLayout({

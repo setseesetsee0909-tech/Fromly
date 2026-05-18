@@ -11,6 +11,7 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun } from "lucide-react";
+import { safePrefersDark, safeStorageGet, safeStorageSet } from "@/lib/browser-storage";
 
 type Theme = "light" | "dark";
 type Ctx = { theme: Theme; toggle: () => void; setTheme: (t: Theme) => void };
@@ -21,17 +22,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("light");
 
   useEffect(() => {
-    const stored = (typeof window !== "undefined" && localStorage.getItem("theme")) as Theme | null;
-    const prefersDark = typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+    const stored = safeStorageGet("theme") as Theme | null;
+    const prefersDark = safePrefersDark();
     const initial: Theme = stored ?? (prefersDark ? "dark" : "light");
     setThemeState(initial);
   }, []);
 
   useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
     const root = document.documentElement;
     if (theme === "dark") root.classList.add("dark");
     else root.classList.remove("dark");
-    try { localStorage.setItem("theme", theme); } catch {}
+    safeStorageSet("theme", theme);
   }, [theme]);
 
   const setTheme = useCallback((nextTheme: Theme) => {

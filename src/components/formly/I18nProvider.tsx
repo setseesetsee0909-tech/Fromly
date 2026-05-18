@@ -11,6 +11,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { safeStorageGet, safeStorageSet } from "@/lib/browser-storage";
 
 export type Lang = "mn" | "en";
 
@@ -77,7 +78,7 @@ const dict = {
     "plan.downgrade": "Free руу буцаах",
     "plan.activated": "Plan идэвхжлээ",
     "pricing.title": "Танд тохирох төлөвлөгөөг сонгоорой",
-    "pricing.desc": "Хэзээд өөрчилж болно. Mock горим тул бодит төлбөр авахгүй.",
+    "pricing.desc": "Хүссэн үедээ plan-aa өөрчилж болно. Paid plan нь төлбөр эсвэл admin approval-ийн дараа идэвхжинэ.",
     "billing.title": "Төлбөр ба захиалга",
     "billing.currentPlan": "Одоогийн plan",
     "billing.usage": "Хэрэглээ",
@@ -164,7 +165,7 @@ const dict = {
     "plan.downgrade": "Downgrade to Free",
     "plan.activated": "Your plan is now active",
     "pricing.title": "Choose the plan that fits your workflow",
-    "pricing.desc": "Upgrade securely using Stripe checkout. Your payment will activate the plan.",
+    "pricing.desc": "Choose the billing flow that fits you. Paid plans activate after payment or admin approval.",
     "billing.title": "Billing and subscription",
     "billing.currentPlan": "Current plan",
     "billing.usage": "Usage",
@@ -206,14 +207,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>("mn");
 
   useEffect(() => {
-    const saved = (typeof window !== "undefined" &&
-      localStorage.getItem("formly:lang")) as Lang | null;
+    const saved = safeStorageGet("formly:lang") as Lang | null;
     if (saved === "mn" || saved === "en") setLangState(saved);
   }, []);
 
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
-    if (typeof window !== "undefined") localStorage.setItem("formly:lang", l);
+    safeStorageSet("formly:lang", l);
   }, []);
 
   const t = useCallback((k: Key) => dict[lang][k] ?? k, [lang]);

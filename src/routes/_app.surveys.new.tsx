@@ -21,16 +21,33 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-type QType = "multiple_choice" | "text" | "rating";
+type QType = "multiple_choice" | "text" | "rating" | "section";
 
 interface QDraft {
   id: string;
   type: QType;
   label: string;
   options: string[];
+  description: string;
 }
 
 const newId = () => Math.random().toString(36).slice(2);
+
+const emptyQuestion = (): QDraft => ({
+  id: newId(),
+  type: "text",
+  label: "",
+  options: [],
+  description: "",
+});
+
+const emptySection = (): QDraft => ({
+  id: newId(),
+  type: "section",
+  label: "",
+  options: [],
+  description: "",
+});
 
 export function NewSurveyPage() {
   const { user } = useAuth();
@@ -39,9 +56,7 @@ export function NewSurveyPage() {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [questions, setQuestions] = useState<QDraft[]>([
-    { id: newId(), type: "text", label: "", options: [] },
-  ]);
+  const [questions, setQuestions] = useState<QDraft[]>([emptyQuestion()]);
   const [busy, setBusy] = useState(false);
 
   const copy =
@@ -63,10 +78,15 @@ export function NewSurveyPage() {
           text: "Текст",
           multipleChoice: "Олон сонголт",
           rating: "Үнэлгээ (1-5)",
+          section: "Хэсэг / гарчиг",
           questionPlaceholder: "Асуултаа бичнэ үү...",
+          sectionPlaceholder: "Хэсгийн гарчиг...",
+          sectionDescription: "Хэсгийн тайлбар",
+          sectionDescriptionPlaceholder: "Энэ хэсэгт юуг бөглөхийг тайлбарлана уу...",
           optionPlaceholder: (index: number) => `Сонголт ${index + 1}`,
           addOption: "Сонголт нэмэх",
           addQuestion: "Асуулт нэмэх",
+          addSection: "Хэсэг нэмэх",
           saveDraft: "Ноорог хадгалах",
           publish: "Нийтлэх",
           titleRequired: "Гарчиг шаардлагатай",
@@ -92,10 +112,15 @@ export function NewSurveyPage() {
           text: "Text",
           multipleChoice: "Multiple choice",
           rating: "Rating (1-5)",
+          section: "Section break",
           questionPlaceholder: "Write your question...",
+          sectionPlaceholder: "Section title...",
+          sectionDescription: "Section description",
+          sectionDescriptionPlaceholder: "Explain what respondents should answer in this section...",
           optionPlaceholder: (index: number) => `Option ${index + 1}`,
           addOption: "Add option",
           addQuestion: "Add question",
+          addSection: "Add section",
           saveDraft: "Save draft",
           publish: "Publish",
           titleRequired: "A survey title is required",
@@ -105,8 +130,8 @@ export function NewSurveyPage() {
           saveAndShare: "Publish and share",
         };
 
-  const addQ = () =>
-    setQuestions((current) => [...current, { id: newId(), type: "text", label: "", options: [] }]);
+  const addQuestion = () => setQuestions((current) => [...current, emptyQuestion()]);
+  const addSection = () => setQuestions((current) => [...current, emptySection()]);
   const removeQ = (id: string) =>
     setQuestions((current) => current.filter((question) => question.id !== id));
   const updateQ = (id: string, patch: Partial<QDraft>) =>
@@ -158,7 +183,9 @@ export function NewSurveyPage() {
         options:
           question.type === "multiple_choice"
             ? question.options.filter((option) => option.trim())
-            : [],
+            : question.type === "section"
+              ? { description: question.description.trim() }
+              : [],
         position: index,
       }));
 
@@ -225,7 +252,10 @@ export function NewSurveyPage() {
 
       <div className="space-y-3">
         {questions.map((question, index) => (
-          <Card key={question.id} className="p-5 md:p-6">
+          <Card
+            key={question.id}
+            className={question.type === "section" ? "border-primary/30 bg-primary/[0.03] p-5 md:p-6" : "p-5 md:p-6"}
+          >
             <div className="flex items-start gap-3">
               <GripVertical className="mt-2 h-5 w-5 shrink-0 text-muted-foreground" />
               <div className="flex-1 space-y-3">
@@ -240,16 +270,18 @@ export function NewSurveyPage() {
                       updateQ(question.id, {
                         type: value as QType,
                         options: value === "multiple_choice" ? ["", ""] : [],
+                        description: value === "section" ? question.description : "",
                       })
                     }
                   >
-                    <SelectTrigger className="w-full sm:w-44">
+                    <SelectTrigger className="w-full sm:w-48">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="text">{copy.text}</SelectItem>
                       <SelectItem value="multiple_choice">{copy.multipleChoice}</SelectItem>
                       <SelectItem value="rating">{copy.rating}</SelectItem>
+                      <SelectItem value="section">{copy.section}</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button
@@ -264,8 +296,21 @@ export function NewSurveyPage() {
                 <Input
                   value={question.label}
                   onChange={(event) => updateQ(question.id, { label: event.target.value })}
-                  placeholder={copy.questionPlaceholder}
+                  placeholder={
+                    question.type === "section" ? copy.sectionPlaceholder : copy.questionPlaceholder
+                  }
                 />
+                {question.type === "section" && (
+                  <div className="space-y-1.5">
+                    <Label>{copy.sectionDescription}</Label>
+                    <Textarea
+                      value={question.description}
+                      onChange={(event) => updateQ(question.id, { description: event.target.value })}
+                      placeholder={copy.sectionDescriptionPlaceholder}
+                      rows={3}
+                    />
+                  </div>
+                )}
                 {question.type === "multiple_choice" && (
                   <div className="space-y-2 pl-2">
                     {question.options.map((option, optionIndex) => (
@@ -310,8 +355,11 @@ export function NewSurveyPage() {
           </Card>
         ))}
 
-        <Button variant="outline" className="w-full" onClick={addQ}>
+        <Button variant="outline" className="w-full" onClick={addQuestion}>
           <Plus className="mr-2 h-4 w-4" /> {copy.addQuestion}
+        </Button>
+        <Button variant="outline" className="w-full" onClick={addSection}>
+          <Plus className="mr-2 h-4 w-4" /> {copy.addSection}
         </Button>
       </div>
 

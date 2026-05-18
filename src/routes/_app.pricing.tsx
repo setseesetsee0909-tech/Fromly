@@ -1,17 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Building2,
   Check,
   CheckCircle2,
   Clock3,
   CreditCard,
+  ExternalLink,
   LayoutList,
   Loader2,
   Lock,
   Mail,
+  QrCode,
+  RefreshCcw,
   ShieldCheck,
+  Smartphone,
   Sparkles,
   Users,
   Zap,
@@ -30,7 +34,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import type { ManualBillingConfig } from "@/lib/manual-billing";
 import { PLAN_PRICE, type Plan } from "@/lib/plans";
+import type { BillingCheckoutMode } from "@/lib/billing-checkout";
 import { toast } from "sonner";
 
 type Tier = {
@@ -42,13 +50,51 @@ type Tier = {
 
 type CheckoutState = "idle" | "processing";
 
-export function PricingPage() {
-  const { plan, setPlan } = usePlan();
+type QPayInvoiceLink = {
+  description?: string;
+  link?: string;
+  name?: string;
+};
+
+type QPayInvoice = {
+  amount: number;
+  invoiceId: string;
+  qrImageDataUrl: string;
+  qrText: string;
+  urls: QPayInvoiceLink[];
+  verifyToken: string;
+};
+
+type MonPaySession = {
+  amount: number;
+  customerPhone: string;
+  requestId: string;
+  transactionId: string;
+  verifyToken: string;
+};
+
+type PricingPageProps = {
+  checkoutMode: BillingCheckoutMode;
+  manualConfig: ManualBillingConfig;
+};
+
+export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
+  const { plan, refresh, setPlan } = usePlan();
   const { session, user } = useAuth();
   const { t, lang } = useI18n();
   const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
   const [checkoutState, setCheckoutState] = useState<CheckoutState>("idle");
   const [checkoutError, setCheckoutError] = useState("");
+  const [monpayConfirmState, setMonPayConfirmState] = useState<CheckoutState>("idle");
+  const [monpayPhoneNumber, setMonPayPhoneNumber] = useState("");
+  const [monpaySession, setMonPaySession] = useState<MonPaySession | null>(null);
+  const [monpayTanCode, setMonPayTanCode] = useState("");
+  const [qpayInvoice, setQPayInvoice] = useState<QPayInvoice | null>(null);
+  const [qpayVerifyState, setQPayVerifyState] = useState<CheckoutState>("idle");
+  const [manualPayerName, setManualPayerName] = useState("");
+  const [manualTransferReference, setManualTransferReference] = useState("");
+  const [manualNote, setManualNote] = useState("");
+  const qpayVerificationInFlight = useRef(false);
 
   const copy =
     lang === "mn"
@@ -90,39 +136,39 @@ export function PricingPage() {
             },
           ],
           signInFirst: "Эхлээд нэвтэрнэ үү.",
-          checkoutTitle: "Checkout",
+          checkoutTitle: "Төлбөр",
           checkoutDescription:
             "Энэ урсгал бодит карт цэнэглэхгүй. Гэхдээ хэрэглэгчид жинхэнэ upgrade шиг мэдрэмж авахуйц байдлаар ажиллана.",
           checkoutBadge: "Туршилтын горим",
           checkoutStep: "Алхам 2/2",
           checkoutHeroTitle: "Төлөвлөгөөгөө баталгаажуулаад шууд идэвхжүүлээрэй",
           checkoutHeroText:
-            "Payment UI нь жинхэнэ checkout шиг харагдана. Баталсны дараа verification дэлгэцээр орж plan тань автоматаар шинэчлэгдэнэ.",
+            "Төлбөрийн хэсэг нь жинхэнэ төлбөрийн хуудас шиг харагдана. Баталгаажуулсны дараа шалгалтын дэлгэцээр орж төлөвлөгөө автоматаар шинэчлэгдэнэ.",
           checkoutSummary: "Төлбөрийн мэдээлэл",
-          checkoutWorkspace: "Workspace",
-          checkoutPlan: "Сонгосон plan",
-          checkoutBilling: "Billing email",
+          checkoutWorkspace: "Ажлын орчин",
+          checkoutPlan: "Сонгосон төлөвлөгөө",
+          checkoutBilling: "Төлбөрийн имэйл",
           checkoutMethod: "Төлбөрийн арга",
           checkoutCard: "Visa төгсгөл 4242",
           checkoutProtected: "SSL хамгаалалттай төлбөрийн урсгал",
-          checkoutNotice: "Бодит мөнгө авахгүй. Баталгаажуулсны дараа plan шууд идэвхжинэ.",
+          checkoutNotice: "Бодит мөнгө авахгүй. Баталгаажуулсны дараа төлөвлөгөө шууд идэвхжинэ.",
           checkoutCancel: "Болих",
           checkoutConfirm: "Төлбөр батлах",
-          checkoutProcessing: "Checkout бэлдэж байна...",
+          checkoutProcessing: "Төлбөрийн хэсгийг бэлдэж байна...",
           includedTitle: "Идэвхжих боломжууд",
-          redirectHint: "Дараагийн алхамд verification дэлгэц рүү автоматаар шилжинэ.",
-          unableToCreate: "Checkout session үүсгэж чадсангүй.",
-          dueToday: "Өнөөдөр дүн",
+          redirectHint: "Дараагийн алхамд шалгалтын дэлгэц рүү автоматаар шилжинэ.",
+          unableToCreate: "Төлбөрийн сесс үүсгэж чадсангүй.",
+          dueToday: "Өнөөдрийн дүн",
           renewsOn: "Дараагийн сунгалт",
           renewsValue: "30 хоногийн дараа туршилтын хэлбэрээр",
-          instantActivation: "Instant activation",
+          instantActivation: "Шууд идэвхжил",
           instantActivationText:
-            "Баталгаажуулмагц plan, usage limit, feature access шууд шинэчлэгдэнэ.",
-          receiptText: "Receipt-style баталгаажуулалт verification хуудсан дээр харагдана.",
-          securePill: "Secure checkout",
+            "Баталгаажуулмагц төлөвлөгөө, ашиглалтын хязгаар, боломжууд шууд шинэчлэгдэнэ.",
+          receiptText: "Баримт хэлбэрийн баталгаажуулалт шалгалтын хуудсан дээр харагдана.",
+          securePill: "Аюулгүй төлбөр",
           secureLine: "PCI-тэй төстэй туршилтын интерфэйс",
           noChargeLine: "Бодит мөнгө огт суутгахгүй",
-          workspaceName: "Formly Workspace",
+          workspaceName: "Formly ажлын орчин",
         }
       : {
           popular: "Popular",
@@ -188,6 +234,208 @@ export function PricingPage() {
           workspaceName: "Formly Workspace",
         };
 
+  const isStripeHostedCheckout = checkoutMode === "stripe_test" || checkoutMode === "stripe_live";
+  const isManualCheckout = checkoutMode === "manual";
+  const isMonPayCheckout = checkoutMode === "monpay";
+  const isQPayCheckout = checkoutMode === "qpay";
+  const checkoutUnavailableMessage =
+    lang === "mn"
+      ? "Төлбөрийн үйлчилгээний тохиргоо дутуу байна. Manual bank transfer, QPay, MonPay эсвэл Stripe-ийн env утгуудаа шалгана уу."
+      : "Billing checkout is not configured yet. Please check your manual billing, QPay, MonPay, or Stripe environment values.";
+  const checkoutBadgeLabel =
+    checkoutMode === "stripe_live"
+      ? lang === "mn"
+        ? "Stripe live"
+        : "Stripe Live"
+      : checkoutMode === "stripe_test"
+        ? lang === "mn"
+          ? "Stripe test"
+          : "Stripe Test"
+        : checkoutMode === "manual"
+          ? lang === "mn"
+            ? "Банкны шилжүүлэг"
+            : "Bank Transfer"
+        : checkoutMode === "monpay"
+          ? "MonPay TAN"
+          : checkoutMode === "qpay"
+            ? "QPay QR"
+            : checkoutMode === "unavailable"
+              ? "Billing Setup"
+              : copy.checkoutBadge;
+  const checkoutDescriptionText = isStripeHostedCheckout
+      ? lang === "mn"
+        ? "Баталгаажуулсны дараа Stripe Checkout руу шилжиж, Visa эсвэл Stripe дэмждэг картаар төлбөрөө хийнэ."
+        : "After you confirm, we redirect you to Stripe Checkout where you can pay with Visa or another Stripe-supported card."
+    : isManualCheckout
+      ? lang === "mn"
+        ? "Банкны данс руу шилжүүлэг хийгээд гүйлгээний мэдээллээ илгээнэ. Админ төлбөрийг шалгасны дараа төлөвлөгөөг идэвхжүүлнэ."
+        : "Send a bank transfer, then submit the transfer reference here. An admin reviews the payment and activates the plan."
+    : isMonPayCheckout
+      ? lang === "mn"
+        ? "Баталгаажуулсны дараа MonPay-аас SMS-ээр TAN код ирнэ. Эхлээд утасны дугаараа оруулаад, дараа нь ирсэн кодоор төлбөрөө баталгаажуулна."
+        : "After you confirm, MonPay sends a TAN code by SMS. Enter your phone number first, then confirm the payment with the TAN code."
+      : isQPayCheckout
+        ? lang === "mn"
+          ? "Баталгаажуулсны дараа QPay нэхэмжлэл үүснэ. QR код эсвэл банкны аппын холбоосоор төлбөрөө хийж болно."
+          : "After you confirm, we create a QPay invoice so you can pay with a QR code or a supported banking app."
+        : checkoutMode === "unavailable"
+          ? checkoutUnavailableMessage
+          : copy.checkoutDescription;
+  const checkoutHeroText = isStripeHostedCheckout
+      ? lang === "mn"
+        ? "Formly захиалгаа Stripe-аар аюулгүй баталгаажуулна. Картын мэдээллээ Stripe-ийн хамгаалалттай хуудсан дээр оруулна."
+        : "Complete your Formly subscription securely with Stripe. Card details are entered on Stripe's hosted checkout page."
+    : isManualCheckout
+      ? lang === "mn"
+        ? "Formly төлөвлөгөөгөө банкны шилжүүлгээр төлж, гүйлгээний мэдээллээ илгээнэ. Админ баталгаажуулсны дараа эрх шинэчлэгдэнэ."
+        : "Pay for your Formly plan with a bank transfer and submit the transfer details. Access updates after admin approval."
+    : isMonPayCheckout
+      ? lang === "mn"
+        ? "Formly захиалгаа MonPay-аар SMS TAN код ашиглан баталгаажуулж төлбөрөө хийж болно."
+        : "Complete your Formly subscription with MonPay using an SMS TAN code when QPay is not available."
+      : isQPayCheckout
+        ? lang === "mn"
+          ? "Formly захиалгаа QPay-аар төлж, Монголын банкны апп эсвэл QR-аар ахиулна."
+          : "Pay for your Formly subscription with QPay using a QR code or a supported Mongolian banking app."
+        : checkoutMode === "unavailable"
+          ? checkoutUnavailableMessage
+          : copy.checkoutHeroText;
+  const checkoutCardLabel = isStripeHostedCheckout
+    ? checkoutMode === "stripe_test"
+      ? "Visa 4242 4242 4242 4242"
+      : "Visa / Mastercard / Card"
+    : isManualCheckout
+      ? lang === "mn"
+        ? "Банкны шилжүүлэг"
+        : "Bank transfer"
+    : isMonPayCheckout
+      ? "MonPay SMS TAN"
+      : isQPayCheckout
+        ? lang === "mn"
+          ? "QPay QR / Банкны апп"
+          : "QPay QR / Bank app"
+        : copy.checkoutCard;
+  const checkoutNoticeText =
+    checkoutMode === "stripe_live"
+      ? lang === "mn"
+          ? "Энэ бол жинхэнэ Stripe захиалгын төлбөр. Амжилттай болсны дараа төлөвлөгөө автоматаар идэвхжинэ."
+        : "This is a real Stripe subscription payment. Your plan activates automatically after successful checkout."
+      : checkoutMode === "stripe_test"
+        ? lang === "mn"
+            ? "Stripe test горимд Visa 4242 4242 4242 4242 картаар шалгаж болно. Бодит мөнгө суутгахгүй."
+          : "This uses Stripe test mode. You can verify the flow with the Visa test card 4242 4242 4242 4242."
+        : isManualCheckout
+          ? lang === "mn"
+            ? "Төлбөр хийсний дараа админ гараар шалгаж баталгаажуулна. Хүсэлт хүлээгдэж байх хугацаанд төлөв нь төлбөрийн хэсэгт харагдана."
+            : "After you send the transfer, an admin reviews it manually. The pending status remains visible on the billing page."
+        : isMonPayCheckout
+          ? lang === "mn"
+            ? "MonPay бүртгэлтэй хэрэглэгчийн утас руу TAN код мессежээр очно. Тэр кодыг энд оруулж төлбөрөө баталгаажуулна."
+            : "A TAN code is sent to the customer's phone by SMS. Enter that code here to confirm the payment."
+          : isQPayCheckout
+            ? lang === "mn"
+              ? "QR кодоо уншуулах эсвэл банкны апп нээгээд төлбөрөө хийсний дараа энэ дэлгэц дээр автоматаар шалгана."
+              : "Scan the QR code or open a banking app to pay, then we verify the payment here automatically."
+            : checkoutMode === "unavailable"
+              ? checkoutUnavailableMessage
+              : copy.checkoutNotice;
+  const secureLineText = isStripeHostedCheckout
+    ? lang === "mn"
+      ? "Stripe-ийн хамгаалалттай төлбөрийн хуудас"
+      : "Stripe-hosted PCI-compliant checkout"
+    : isManualCheckout
+      ? lang === "mn"
+        ? "Админаар шалгагдах банкны шилжүүлэг"
+        : "Manual bank transfer with admin review"
+    : isMonPayCheckout
+      ? lang === "mn"
+        ? "SMS TAN баталгаажуулалттай MonPay API"
+        : "MonPay partner API with SMS-based TAN confirmation"
+      : isQPayCheckout
+        ? lang === "mn"
+          ? "Банкны апп холбоостой QPay QR нэхэмжлэл"
+          : "QPay QR invoice with bank app deep links"
+        : checkoutMode === "unavailable"
+          ? "Billing provider credentials are required"
+          : copy.secureLine;
+  const modeLineText =
+    checkoutMode === "stripe_live"
+      ? lang === "mn"
+        ? "Шууд картын төлбөр"
+        : "Live card payment"
+      : checkoutMode === "stripe_test"
+        ? lang === "mn"
+          ? "Ашиглалтад орохоос өмнө Stripe test картаар шалгана"
+          : "Use Stripe test cards before going live"
+        : isManualCheckout
+          ? lang === "mn"
+            ? "Банкны шилжүүлгээр төлөөд баталгаажуулалт хүлээнэ"
+            : "Pay by bank transfer and wait for approval"
+        : isMonPayCheckout
+          ? lang === "mn"
+            ? "Утасны дугаараар MonPay төлбөр хийж TAN кodoор баталгаажуулна"
+            : "MonPay phone-number payment with TAN code confirmation"
+          : isQPayCheckout
+            ? "Монгол банкны апп болон QPay QR төлбөр"
+            : checkoutMode === "unavailable"
+              ? lang === "mn"
+                ? "Төлбөр хүлээж авахаас өмнө provider-ийн тохиргоо шаардлагатай"
+                : "Provider setup needed before accepting payments"
+              : copy.noChargeLine;
+  const redirectHintText = isStripeHostedCheckout
+      ? lang === "mn"
+        ? "Баталгаажуулсны дараа Stripe руу шилжиж картын мэдээллээ оруулна."
+        : "After you confirm, you'll continue to Stripe to enter your card details."
+    : isManualCheckout
+      ? lang === "mn"
+        ? "Доорх банкны мэдээллээр шилжүүлэг хийгээд, дараа нь төлөгчийн нэр, гүйлгээний утга, тайлбараа илгээн хүсэлт үүсгэнэ."
+        : "Use the bank details below to pay, then submit the payer name, transfer reference, and note for review."
+    : isMonPayCheckout
+      ? lang === "mn"
+        ? "Эхлээд утасны дугаараа оруулж TAN код авна, дараа нь мессежээр ирсэн кодоо оруулж төлөвлөгөөгөө идэвхжүүлнэ."
+        : "First enter the phone number to receive a TAN code, then enter the SMS code to activate the plan."
+      : isQPayCheckout
+        ? lang === "mn"
+          ? "Баталгаажуулсны дараа QR код болон аппын холбоосууд харагдана. Төлбөрийг хийсний дараа систем автоматаар шалгана."
+          : "After you confirm, you'll see the QR code and app links. We then verify the payment automatically."
+        : checkoutMode === "unavailable"
+          ? checkoutUnavailableMessage
+          : copy.redirectHint;
+  const renewsValueText = isStripeHostedCheckout
+      ? lang === "mn"
+        ? "Сарын захиалга, цуцлах хүртэл автоматаар сунгагдана"
+        : "Monthly subscription until canceled"
+    : isManualCheckout
+      ? lang === "mn"
+        ? "Админ баталгаажуулсны дараа төлөвлөгөө идэвхжинэ"
+        : "Activates after the transfer is approved"
+    : isMonPayCheckout
+      ? lang === "mn"
+        ? "MonPay-аар баталгаажуулсны дараа шууд идэвхжинэ"
+        : "Activates right after the MonPay TAN confirmation"
+      : isQPayCheckout
+        ? lang === "mn"
+          ? "QPay-аар төлсний дараа захиалга идэвхжинэ"
+          : "Subscription activated after QPay payment"
+        : copy.renewsValue;
+  const checkoutActionLabel = isStripeHostedCheckout
+      ? lang === "mn"
+        ? "Stripe руу үргэлжлүүлэх"
+        : "Continue to Stripe"
+    : isManualCheckout
+      ? lang === "mn"
+        ? "Хүсэлт илгээх"
+        : "Submit request"
+    : isMonPayCheckout
+      ? lang === "mn"
+        ? "TAN код авах"
+        : "Send TAN code"
+      : isQPayCheckout
+        ? lang === "mn"
+          ? "QPay нэхэмжлэл үүсгэх"
+          : "Create QPay invoice"
+        : copy.checkoutConfirm;
+
   const tiers: Tier[] = [
     {
       id: "free",
@@ -248,9 +496,13 @@ export function PricingPage() {
   ];
 
   const selectedTier = tiers.find((tier) => tier.id === checkoutPlan) ?? null;
+  const manualAmount =
+    selectedTier?.id === "pro" || selectedTier?.id === "team"
+      ? manualConfig.planAmounts[selectedTier.id]
+      : null;
 
   const closeCheckout = (open: boolean) => {
-    if (checkoutState === "processing") {
+    if (checkoutState === "processing" || monpayConfirmState === "processing") {
       return;
     }
 
@@ -258,6 +510,15 @@ export function PricingPage() {
       setCheckoutPlan(null);
       setCheckoutState("idle");
       setCheckoutError("");
+      setMonPayConfirmState("idle");
+      setMonPayPhoneNumber("");
+      setMonPaySession(null);
+      setMonPayTanCode("");
+      setManualPayerName("");
+      setManualTransferReference("");
+      setManualNote("");
+      setQPayInvoice(null);
+      setQPayVerifyState("idle");
     }
   };
 
@@ -279,10 +540,174 @@ export function PricingPage() {
       return;
     }
 
+    if (checkoutMode === "unavailable") {
+      toast.error(checkoutUnavailableMessage);
+      return;
+    }
+
     setCheckoutPlan(nextPlan);
     setCheckoutState("idle");
     setCheckoutError("");
+    setMonPayConfirmState("idle");
+    setMonPayPhoneNumber("");
+    setMonPaySession(null);
+    setMonPayTanCode("");
+    setManualPayerName(
+      typeof user.user_metadata?.full_name === "string"
+        ? user.user_metadata.full_name
+        : user.email ?? "",
+    );
+    setManualTransferReference("");
+    setManualNote("");
+    setQPayInvoice(null);
+    setQPayVerifyState("idle");
   };
+
+  const confirmMonPayTanCode = async () => {
+    if (!monpaySession || !monpayTanCode.trim() || !session?.access_token) {
+      toast.error(
+        lang === "mn"
+          ? "Messageer irsen TAN code-oo oruulna uu."
+          : "Please enter the TAN code sent by SMS.",
+      );
+      return;
+    }
+
+    setMonPayConfirmState("processing");
+    setCheckoutError("");
+
+    try {
+      const response = await fetch("/api/monpay/confirm-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          tanCode: monpayTanCode,
+          verifyToken: monpaySession.verifyToken,
+        }),
+      });
+
+      const data = (await response.json()) as { error?: string; success?: boolean };
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Unable to confirm MonPay payment.");
+      }
+
+      await refresh();
+      toast.success(lang === "mn" ? "Төлөвлөгөө амжилттай идэвхжлээ." : "Plan activated successfully.");
+      window.location.href = "/billing";
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : lang === "mn"
+            ? "MonPay tulbur batalgaazhuulahad aldaa garlaa."
+            : "Unable to confirm the MonPay payment.";
+
+      setCheckoutError(message);
+      toast.error(message);
+    } finally {
+      setMonPayConfirmState("idle");
+    }
+  };
+
+  const verifyQPayPayment = useCallback(
+    async (showPendingToast: boolean) => {
+      if (!qpayInvoice || !session?.access_token) {
+        return false;
+      }
+
+      if (qpayVerificationInFlight.current) {
+        return false;
+      }
+
+      qpayVerificationInFlight.current = true;
+      setQPayVerifyState("processing");
+
+      try {
+        const response = await fetch("/api/qpay/verify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            verifyToken: qpayInvoice.verifyToken,
+          }),
+        });
+
+        const data = (await response.json()) as {
+          error?: string;
+          paymentStatus?: string;
+          success?: boolean;
+        };
+
+        if (!response.ok) {
+          throw new Error(data.error || "Unable to verify QPay payment.");
+        }
+
+        if (!data.success) {
+          const pendingMessage =
+            lang === "mn"
+              ? "Төлбөр баталгаажаагүй байна. Төлбөрөө хийгээд дахин шалгана уу."
+              : "Payment is still pending. Complete the QPay payment and try again.";
+
+          setCheckoutError(pendingMessage);
+          setQPayVerifyState("idle");
+
+          if (showPendingToast) {
+            toast.message(pendingMessage);
+          }
+
+          return false;
+        }
+
+        await refresh();
+        setCheckoutError("");
+        setQPayVerifyState("idle");
+        toast.success(
+          lang === "mn" ? "Төлөвлөгөө амжилттай идэвхжлээ." : "Plan activated successfully.",
+        );
+        window.location.href = "/billing";
+        return true;
+      } catch (error) {
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : lang === "mn"
+              ? "QPay tulbur shalgahad aldaa garlaa."
+              : "Unable to verify the QPay payment.";
+
+        setCheckoutError(message);
+        setQPayVerifyState("idle");
+
+        if (showPendingToast) {
+          toast.error(message);
+        }
+
+        return false;
+      } finally {
+        qpayVerificationInFlight.current = false;
+      }
+    },
+    [lang, qpayInvoice, refresh, session?.access_token],
+  );
+
+  useEffect(() => {
+    if (!qpayInvoice || !session?.access_token) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void verifyQPayPayment(false);
+    }, 5000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [qpayInvoice, session?.access_token, verifyQPayPayment]);
 
   const confirmCheckout = async () => {
     if (!checkoutPlan || !user?.email || !session?.access_token) {
@@ -290,24 +715,133 @@ export function PricingPage() {
       return;
     }
 
+    if (isManualCheckout) {
+      if (!manualPayerName.trim()) {
+        toast.error(lang === "mn" ? "Төлөгчийн нэрээ оруулна уу." : "Please enter the payer name.");
+        return;
+      }
+
+      if (!manualTransferReference.trim()) {
+        toast.error(
+          lang === "mn"
+            ? "Гүйлгээний утга эсвэл transaction ID-гаа оруулна уу."
+            : "Please enter the transfer reference or transaction ID.",
+        );
+        return;
+      }
+    }
+
+    if (isMonPayCheckout && !monpayPhoneNumber.trim()) {
+      toast.error(
+        lang === "mn"
+          ? "MonPay утасны дугаараа оруулна уу."
+          : "Please enter the MonPay phone number.",
+      );
+      return;
+    }
+
     setCheckoutState("processing");
     setCheckoutError("");
 
     try {
-      await new Promise((resolve) => window.setTimeout(resolve, 900));
-
-      const response = await fetch("/api/stripe/create-checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+      const response = await fetch(
+        isManualCheckout
+          ? "/api/manual-billing/create-request"
+          : isMonPayCheckout
+          ? "/api/monpay/create-payment"
+          : isQPayCheckout
+            ? "/api/qpay/create-invoice"
+            : "/api/stripe/create-checkout",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            note: manualNote,
+            payerName: manualPayerName,
+            phoneNumber: monpayPhoneNumber,
+            plan: checkoutPlan,
+            transferReference: manualTransferReference,
+          }),
         },
-        body: JSON.stringify({
-          plan: checkoutPlan,
-        }),
-      });
+      );
 
-      const data = (await response.json()) as { error?: string; message?: string; url?: string };
+      const data = (await response.json()) as {
+        amount?: number;
+        error?: string;
+        invoiceId?: string;
+        message?: string;
+        qrImageDataUrl?: string;
+        qrText?: string;
+        requestId?: string;
+        request?: { id?: string };
+        transactionId?: string;
+        url?: string;
+        urls?: QPayInvoiceLink[];
+        verifyToken?: string;
+      };
+
+      if (isManualCheckout) {
+        if (!response.ok || !data.request?.id) {
+          throw new Error(data.error || data.message || copy.unableToCreate);
+        }
+
+        setCheckoutState("idle");
+        setCheckoutError("");
+        toast.success(
+          lang === "mn"
+            ? "Банкны шилжүүлгийн хүсэлт илгээгдлээ. Админ шалгасны дараа төлөвлөгөө идэвхжинэ."
+            : "Your bank transfer request has been submitted. The plan activates after admin review.",
+        );
+        window.location.href = "/billing";
+        return;
+      }
+
+      if (isMonPayCheckout) {
+        if (!response.ok || !data.verifyToken || !data.requestId || !data.transactionId) {
+          throw new Error(data.error || data.message || copy.unableToCreate);
+        }
+
+        setMonPaySession({
+          amount: data.amount ?? PLAN_PRICE[checkoutPlan].usd,
+          customerPhone: monpayPhoneNumber,
+          requestId: data.requestId,
+          transactionId: data.transactionId,
+          verifyToken: data.verifyToken,
+        });
+        setCheckoutState("idle");
+        setCheckoutError(
+          lang === "mn"
+            ? "TAN code messageer ilgeegdlee. Odoo kodoo oruulaad tulburuu batalgaajuulna uu."
+            : "The TAN code has been sent by SMS. Enter it below to confirm the payment.",
+        );
+        return;
+      }
+
+      if (isQPayCheckout) {
+        if (!response.ok || !data.invoiceId || !data.verifyToken) {
+          throw new Error(data.error || data.message || copy.unableToCreate);
+        }
+
+        setQPayInvoice({
+          amount: data.amount ?? PLAN_PRICE[checkoutPlan].usd,
+          invoiceId: data.invoiceId,
+          qrImageDataUrl: data.qrImageDataUrl ?? "",
+          qrText: data.qrText ?? "",
+          urls: Array.isArray(data.urls) ? data.urls : [],
+          verifyToken: data.verifyToken,
+        });
+        setCheckoutState("idle");
+        setCheckoutError(
+          lang === "mn"
+            ? "QR кодоо ашиглаад төлбөрөө хийнэ үү. Төлбөр орж ирмэгц автоматаар шалгана."
+            : "Complete the payment with the QR code or bank app. We will verify it automatically.",
+        );
+        return;
+      }
+
       if (!response.ok || !data.url) {
         throw new Error(data.error || data.message || copy.unableToCreate);
       }
@@ -356,7 +890,7 @@ export function PricingPage() {
                 <Button
                   className="mt-6"
                   variant={active ? "outline" : tier.highlight ? "default" : "secondary"}
-                  disabled={active}
+                  disabled={active || (tier.id !== "free" && checkoutMode === "unavailable")}
                   onClick={() => void choose(tier.id)}
                 >
                   {active
@@ -419,7 +953,7 @@ export function PricingPage() {
         <DialogContent className="max-h-[90vh] overflow-y-auto border border-primary/10 bg-background p-0 shadow-2xl sm:max-w-[920px]">
           <DialogHeader className="sr-only">
             <DialogTitle>{copy.checkoutTitle}</DialogTitle>
-            <DialogDescription>{copy.checkoutDescription}</DialogDescription>
+            <DialogDescription>{checkoutDescriptionText}</DialogDescription>
           </DialogHeader>
 
           {selectedTier ? (
@@ -430,7 +964,7 @@ export function PricingPage() {
                 <div className="relative space-y-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge className="border-white/15 bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white shadow-none hover:bg-white/10">
-                      {copy.checkoutBadge}
+                      {checkoutBadgeLabel}
                     </Badge>
                     <Badge className="border-white/15 bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white shadow-none hover:bg-white/10">
                       {copy.checkoutStep}
@@ -446,7 +980,7 @@ export function PricingPage() {
                       {copy.checkoutHeroTitle}
                     </h2>
                     <p className="max-w-md text-[14px] leading-6 text-primary-foreground/80 sm:text-[15px]">
-                      {copy.checkoutHeroText}
+                      {checkoutHeroText}
                     </p>
                   </div>
 
@@ -498,7 +1032,7 @@ export function PricingPage() {
                           <Lock className="h-3.5 w-3.5 text-white/70" />
                           <span className="text-primary-foreground/72">{copy.checkoutMethod}</span>
                         </div>
-                        <span className="font-semibold">{copy.checkoutCard}</span>
+                        <span className="font-semibold">{checkoutCardLabel}</span>
                       </div>
                     </div>
                   </div>
@@ -517,15 +1051,15 @@ export function PricingPage() {
                         {copy.securePill}
                       </p>
                       <p className="mt-1.5 text-[13px] leading-5 text-primary-foreground/86">
-                        {copy.secureLine}
+                        {secureLineText}
                       </p>
                     </div>
                     <div className="rounded-2xl border border-white/15 bg-white/10 p-3.5 sm:col-span-2">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/62">
-                        {copy.checkoutBadge}
+                        {checkoutBadgeLabel}
                       </p>
                       <p className="mt-1.5 text-[13px] leading-5 text-primary-foreground/86">
-                        {copy.noChargeLine}
+                        {modeLineText}
                       </p>
                     </div>
                   </div>
@@ -545,11 +1079,11 @@ export function PricingPage() {
                         </h3>
                       </div>
                       <Badge variant="secondary" className="rounded-full px-3 py-1 text-[11px]">
-                        {copy.checkoutBadge}
+                        {checkoutBadgeLabel}
                       </Badge>
                     </div>
                     <p className="text-[14px] leading-6 text-muted-foreground">
-                      {copy.checkoutDescription}
+                      {checkoutDescriptionText}
                     </p>
                   </div>
 
@@ -560,12 +1094,14 @@ export function PricingPage() {
                           {copy.dueToday}
                         </p>
                         <p className="mt-1 text-[1.9rem] font-semibold leading-none">
-                          ${PLAN_PRICE[selectedTier.id].usd.toFixed(2)}
+                          {isManualCheckout && manualAmount
+                            ? `${manualAmount.toLocaleString(lang === "mn" ? "mn-MN" : "en-US")}₮`
+                            : `$${PLAN_PRICE[selectedTier.id].usd.toFixed(2)}`}
                         </p>
                       </div>
                       <div className="text-right text-[13px] text-muted-foreground">
                         <p>{copy.renewsOn}</p>
-                        <p className="mt-1 font-medium text-foreground">{copy.renewsValue}</p>
+                        <p className="mt-1 font-medium text-foreground">{renewsValueText}</p>
                       </div>
                     </div>
 
@@ -576,7 +1112,7 @@ export function PricingPage() {
                       </div>
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-muted-foreground">{copy.checkoutMethod}</span>
-                        <span className="font-semibold">{copy.checkoutCard}</span>
+                        <span className="font-semibold">{checkoutCardLabel}</span>
                       </div>
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-muted-foreground">{copy.checkoutBilling}</span>
@@ -591,7 +1127,7 @@ export function PricingPage() {
                     <div>
                       <p className="text-base font-semibold">{copy.includedTitle}</p>
                       <p className="mt-1 text-[14px] leading-6 text-muted-foreground">
-                        {copy.redirectHint}
+                        {redirectHintText}
                       </p>
                     </div>
 
@@ -616,7 +1152,7 @@ export function PricingPage() {
                       <div className="space-y-1">
                         <p className="text-base font-semibold">{copy.checkoutProtected}</p>
                         <p className="text-[14px] leading-6 text-muted-foreground">
-                          {copy.checkoutNotice}
+                          {checkoutNoticeText}
                         </p>
                         <p className="text-[14px] leading-6 text-muted-foreground">
                           {copy.receiptText}
@@ -630,28 +1166,324 @@ export function PricingPage() {
                       {checkoutError}
                     </div>
                   ) : null}
+
+                  {isManualCheckout ? (
+                    <div className="space-y-4 rounded-3xl border border-primary/20 bg-primary/[0.03] p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-2xl bg-primary/10 p-2 text-primary">
+                          <Building2 className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-base font-semibold">
+                            {lang === "mn" ? "Банкны шилжүүлгийн мэдээлэл" : "Bank transfer details"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {lang === "mn"
+                              ? "Төлбөрөө хийгээд доорх мэдээллийг илгээнэ үү."
+                              : "Complete the transfer, then submit the details below."}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-2xl border bg-background p-3">
+                          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                            {lang === "mn" ? "Банк" : "Bank"}
+                          </p>
+                          <p className="mt-1 font-semibold">{manualConfig.bankName}</p>
+                        </div>
+                        <div className="rounded-2xl border bg-background p-3">
+                          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                            {lang === "mn" ? "Дүн" : "Amount"}
+                          </p>
+                          <p className="mt-1 font-semibold">
+                            {manualAmount
+                              ? `${manualAmount.toLocaleString(lang === "mn" ? "mn-MN" : "en-US")}₮`
+                              : "—"}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border bg-background p-3">
+                          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                            {lang === "mn" ? "Дансны нэр" : "Account name"}
+                          </p>
+                          <p className="mt-1 font-semibold">{manualConfig.accountName}</p>
+                        </div>
+                        <div className="rounded-2xl border bg-background p-3">
+                          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                            {lang === "mn" ? "Дансны дугаар" : "Account number"}
+                          </p>
+                          <p className="mt-1 font-mono text-sm">{manualConfig.accountNumber}</p>
+                        </div>
+                      </div>
+
+                      {manualConfig.note ? (
+                        <div className="rounded-2xl border bg-background p-3 text-sm text-muted-foreground">
+                          {manualConfig.note}
+                        </div>
+                      ) : null}
+
+                      <div className="grid gap-3">
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">
+                            {lang === "mn" ? "Төлөгчийн нэр" : "Payer name"}
+                          </p>
+                          <Input
+                            onChange={(event) => setManualPayerName(event.target.value)}
+                            placeholder={lang === "mn" ? "Шилжүүлэг хийсэн хүний нэр" : "Name used for the transfer"}
+                            value={manualPayerName}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">
+                            {lang === "mn" ? "Гүйлгээний утга" : "Transfer reference"}
+                          </p>
+                          <Input
+                            onChange={(event) => setManualTransferReference(event.target.value)}
+                            placeholder={
+                              lang === "mn"
+                                ? "Transaction ID, утга, эсвэл сүүлийн 4 орон"
+                                : "Transaction ID, payment note, or last 4 digits"
+                            }
+                            value={manualTransferReference}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">
+                            {lang === "mn" ? "Нэмэлт тайлбар" : "Additional note"}
+                          </p>
+                          <Textarea
+                            onChange={(event) => setManualNote(event.target.value)}
+                            placeholder={
+                              lang === "mn"
+                                ? "Төлбөр хийсэн хугацаа, дэлгэцийн зургийн холбоос, эсвэл нэмэлт тайлбар"
+                                : "Transfer time, screenshot link, or any helpful note"
+                            }
+                            rows={4}
+                            value={manualNote}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {isMonPayCheckout ? (
+                    <div className="space-y-4 rounded-3xl border border-primary/20 bg-primary/[0.03] p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-2xl bg-primary/10 p-2 text-primary">
+                          <Smartphone className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-base font-semibold">
+                            {lang === "mn"
+                              ? "MonPay TAN batalgaajuulalt"
+                              : "MonPay TAN confirmation"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {lang === "mn"
+                              ? "MonPay burtgeltei utasnii dugaar ruu SMS-eer code irne."
+                              : "The TAN code is delivered by SMS to the customer's MonPay phone number."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {!monpaySession ? (
+                        <div className="space-y-3">
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">
+                              {lang === "mn" ? "Utasnii dugaar" : "Phone number"}
+                            </p>
+                            <Input
+                              inputMode="tel"
+                              onChange={(event) => setMonPayPhoneNumber(event.target.value)}
+                              placeholder={
+                                lang === "mn"
+                                  ? "99112233 esvel 97699112233"
+                                  : "99112233 or 97699112233"
+                              }
+                              value={monpayPhoneNumber}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {lang === "mn"
+                              ? "MonPay TAN flow ni ug dugaar ruu batalgaajuulah code ilgeene."
+                              : "The MonPay TAN flow sends a confirmation code to the supplied phone number."}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-2xl border bg-background p-3">
+                              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                                {lang === "mn" ? "Utas" : "Phone"}
+                              </p>
+                              <p className="mt-1 font-mono text-sm">
+                                {monpaySession.customerPhone}
+                              </p>
+                            </div>
+                            <div className="rounded-2xl border bg-background p-3">
+                              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                                TAN
+                              </p>
+                              <Input
+                                inputMode="numeric"
+                                onChange={(event) => setMonPayTanCode(event.target.value)}
+                                placeholder={lang === "mn" ? "SMS-eer irsen code" : "SMS TAN code"}
+                                value={monpayTanCode}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-2xl border bg-background p-3">
+                              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                                Request ID
+                              </p>
+                              <p className="mt-1 font-mono text-xs text-muted-foreground">
+                                {monpaySession.requestId}
+                              </p>
+                            </div>
+                            <div className="rounded-2xl border bg-background p-3">
+                              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                                Transaction ID
+                              </p>
+                              <p className="mt-1 font-mono text-xs text-muted-foreground">
+                                {monpaySession.transactionId}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {isQPayCheckout && qpayInvoice ? (
+                    <div className="space-y-4 rounded-3xl border border-primary/20 bg-primary/[0.03] p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-2xl bg-primary/10 p-2 text-primary">
+                          <QrCode className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-base font-semibold">
+                            {lang === "mn" ? "QPay төлбөрийн нэхэмжлэл" : "QPay payment invoice"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {lang === "mn"
+                              ? "QR code scan хийх эсвэл банкны апп руу шууд үсэрч төлбөрөө хийнэ."
+                              : "Scan the QR code or jump directly into a supported banking app."}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-[220px_1fr]">
+                        <div className="rounded-3xl border bg-white p-4">
+                          {qpayInvoice.qrImageDataUrl ? (
+                            <img
+                              alt="QPay QR code"
+                              className="mx-auto aspect-square w-full max-w-[180px] rounded-2xl object-contain"
+                              src={qpayInvoice.qrImageDataUrl}
+                            />
+                          ) : (
+                            <div className="flex aspect-square items-center justify-center rounded-2xl bg-muted">
+                              <QrCode className="h-10 w-10 text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="rounded-2xl border bg-background p-3">
+                            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                              {lang === "mn" ? "Нэхэмжлэл" : "Invoice"}
+                            </p>
+                            <p className="mt-1 font-mono text-sm">{qpayInvoice.invoiceId}</p>
+                          </div>
+
+                          {qpayInvoice.urls.length > 0 ? (
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {qpayInvoice.urls.slice(0, 6).map((item) => (
+                                <Button
+                                  key={`${item.name ?? "bank"}-${item.link ?? "link"}`}
+                                  asChild
+                                  className="justify-between"
+                                  variant="outline"
+                                >
+                                  <a href={item.link || "#"}>
+                                    <span className="flex items-center gap-2 truncate">
+                                      <Smartphone className="h-4 w-4" />
+                                      {item.name || item.description || "Open app"}
+                                    </span>
+                                    <ExternalLink className="h-4 w-4" />
+                                  </a>
+                                </Button>
+                              ))}
+                            </div>
+                          ) : null}
+
+                          {qpayInvoice.qrText ? (
+                            <div className="rounded-2xl border bg-background p-3">
+                              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                                QR Text
+                              </p>
+                              <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                                {qpayInvoice.qrText}
+                              </p>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 <DialogFooter className="mt-5 border-t pt-4 sm:justify-between">
                   <Button
                     variant="secondary"
                     onClick={() => closeCheckout(false)}
-                    disabled={checkoutState === "processing"}
+                    disabled={checkoutState === "processing" || monpayConfirmState === "processing"}
                   >
                     {copy.checkoutCancel}
                   </Button>
                   <Button
                     className="min-w-[220px]"
-                    onClick={() => void confirmCheckout()}
-                    disabled={checkoutState === "processing"}
+                    onClick={() =>
+                      monpaySession
+                        ? void confirmMonPayTanCode()
+                        : qpayInvoice
+                          ? void verifyQPayPayment(true)
+                          : void confirmCheckout()
+                    }
+                    disabled={
+                      checkoutState === "processing" ||
+                      monpayConfirmState === "processing" ||
+                      qpayVerifyState === "processing"
+                    }
                   >
-                    {checkoutState === "processing" ? (
+                    {checkoutState === "processing" ||
+                    monpayConfirmState === "processing" ||
+                    qpayVerifyState === "processing" ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {copy.checkoutProcessing}
+                        {monpaySession
+                          ? lang === "mn"
+                            ? "MonPay batalgaajuulj baina..."
+                            : "Confirming MonPay payment..."
+                          : qpayInvoice
+                            ? lang === "mn"
+                              ? "Төлбөр шалгаж байна..."
+                              : "Checking payment..."
+                            : copy.checkoutProcessing}
+                      </>
+                    ) : monpaySession ? (
+                      <>
+                        <RefreshCcw className="mr-2 h-4 w-4" />
+                        {lang === "mn" ? "TAN code batalah" : "Confirm TAN code"}
+                      </>
+                    ) : qpayInvoice ? (
+                      <>
+                        <RefreshCcw className="mr-2 h-4 w-4" />
+                        {lang === "mn" ? "Төлбөр шалгах" : "Check payment"}
                       </>
                     ) : (
-                      copy.checkoutConfirm
+                      checkoutActionLabel
                     )}
                   </Button>
                 </DialogFooter>

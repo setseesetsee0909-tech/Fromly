@@ -3,7 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Archive,
   ArrowLeft,
@@ -20,7 +20,7 @@ import {
   Bar,
   BarChart,
   Cell,
-  Legend,
+  Label,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -66,14 +66,52 @@ interface R {
   country: string | null;
 }
 
-const COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--secondary))",
-  "hsl(var(--accent))",
-  "#10b981",
-  "#f59e0b",
-  "#ec4899",
-];
+function isSectionQuestion(question: Q) {
+  return question.type === "section";
+}
+
+const CHART_COLORS = ["#2563eb", "#4f46e5", "#0ea5e9", "#14b8a6", "#f59e0b", "#ec4899"];
+const PRIMARY_CHART_COLOR = "#2563eb";
+
+type PieLabelProps = {
+  cx?: number;
+  cy?: number;
+  innerRadius?: number;
+  outerRadius?: number;
+  midAngle?: number;
+  percent?: number;
+};
+
+function renderPieSliceLabel({
+  cx = 0,
+  cy = 0,
+  innerRadius = 0,
+  outerRadius = 0,
+  midAngle = 0,
+  percent = 0,
+}: PieLabelProps) {
+  if (percent < 0.08) {
+    return null;
+  }
+
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+  const angle = (-midAngle * Math.PI) / 180;
+  const x = cx + radius * Math.cos(angle);
+  const y = cy + radius * Math.sin(angle);
+
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="white"
+      textAnchor="middle"
+      dominantBaseline="central"
+      className="text-[11px] font-semibold"
+    >
+      {`${Math.round(percent * 100)}%`}
+    </text>
+  );
+}
 
 export function AnalyticsPage({ surveyId }: { surveyId: string }) {
   const router = useRouter();
@@ -146,6 +184,28 @@ export function AnalyticsPage({ surveyId }: { surveyId: string }) {
           noAnswers: "No responses yet",
           avgLabel: "Average",
           responsesSheet: "Responses",
+        };
+
+  const uiCopy =
+    lang === "mn"
+      ? {
+          shareTitle: "Хэрэглэгчдэд явуулах link",
+          shareDesc: "Судалгааг бөглөх хүмүүст public form link-ээ илгээнэ.",
+          exportTitle: "Excel тайлан",
+          exportDesc:
+            "Энэ export нь зөвхөн танд зориулагдсан. Хариулагчдад Excel файл бүү явуулаарай.",
+          openPublicForm: "Public form нээх",
+          exportButton: "Excel татах",
+          shareButton: "Form link хуваалцах",
+        }
+      : {
+          shareTitle: "Link for respondents",
+          shareDesc: "Send the public form link to people who should fill out the survey.",
+          exportTitle: "Excel report",
+          exportDesc: "This export is for you only. Do not send the Excel file to respondents.",
+          openPublicForm: "Open public form",
+          exportButton: "Download Excel",
+          shareButton: "Share form link",
         };
 
   useEffect(() => {
@@ -244,6 +304,19 @@ export function AnalyticsPage({ surveyId }: { surveyId: string }) {
     router.push("/dashboard");
   };
 
+  const answerableQuestions = questions.filter((question) => !isSectionQuestion(question));
+  const publicFormUrl = useMemo(() => {
+    if (typeof window === "undefined") {
+      return "";
+    }
+
+    const configuredBaseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+    const baseUrl = configuredBaseUrl
+      ? configuredBaseUrl.replace(/\/$/, "")
+      : window.location.origin;
+    return `${baseUrl}/s/${surveyId}`;
+  }, [surveyId]);
+
   const exportExcel = async () => {
     if (!limits.export) {
       toast.error(t("limit.exportPro"));
@@ -259,7 +332,7 @@ export function AnalyticsPage({ surveyId }: { surveyId: string }) {
           country: response.country,
           city: response.city,
         };
-        for (const question of questions) {
+        for (const question of answerableQuestions) {
           const answer = answers.find(
             (entry) => entry.question_id === question.id && entry.response_id === response.id,
           );
@@ -327,7 +400,7 @@ export function AnalyticsPage({ surveyId }: { surveyId: string }) {
             }
             trigger={
               <Button>
-                <Send className="mr-2 h-4 w-4" /> {copy.share}
+                <Send className="mr-2 h-4 w-4" /> {uiCopy.shareButton}
               </Button>
             }
           />
@@ -337,7 +410,7 @@ export function AnalyticsPage({ surveyId }: { surveyId: string }) {
             ) : (
               <Lock className="mr-2 h-4 w-4" />
             )}
-            {t("analytics.export")}
+            {uiCopy.exportButton}
           </Button>
           {survey.is_published && (
             <Button onClick={togglePublish} variant="outline">
@@ -349,6 +422,38 @@ export function AnalyticsPage({ surveyId }: { surveyId: string }) {
             <Trash2 className="mr-2 h-4 w-4" /> {copy.delete}
           </Button>
         </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="border-primary/20 bg-primary/[0.03] p-5">
+          <p className="text-sm font-semibold text-foreground">{uiCopy.shareTitle}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{uiCopy.shareDesc}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button onClick={() => setShareOpen(true)}>
+              <Send className="mr-2 h-4 w-4" /> {uiCopy.shareButton}
+            </Button>
+            <Button asChild variant="outline">
+              <a href={publicFormUrl} target="_blank" rel="noreferrer">
+                <FileText className="mr-2 h-4 w-4" /> {uiCopy.openPublicForm}
+              </a>
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="border-dashed p-5">
+          <p className="text-sm font-semibold text-foreground">{uiCopy.exportTitle}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{uiCopy.exportDesc}</p>
+          <div className="mt-4">
+            <Button onClick={exportExcel} variant="outline">
+              {limits.export ? (
+                <Download className="mr-2 h-4 w-4" />
+              ) : (
+                <Lock className="mr-2 h-4 w-4" />
+              )}
+              {uiCopy.exportButton}
+            </Button>
+          </div>
+        </Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -365,7 +470,7 @@ export function AnalyticsPage({ surveyId }: { surveyId: string }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">{copy.totalQuestions}</p>
-              <p className="mt-1 text-2xl font-bold">{questions.length}</p>
+              <p className="mt-1 text-2xl font-bold">{answerableQuestions.length}</p>
             </div>
             <FileText className="h-5 w-5 text-secondary" />
           </div>
@@ -375,7 +480,9 @@ export function AnalyticsPage({ surveyId }: { surveyId: string }) {
             <div>
               <p className="text-sm text-muted-foreground">{copy.avgAnswers}</p>
               <p className="mt-1 text-2xl font-bold">
-                {questions.length ? (answers.length / questions.length).toFixed(1) : "0"}
+                {answerableQuestions.length
+                  ? (answers.length / answerableQuestions.length).toFixed(1)
+                  : "0"}
               </p>
             </div>
             <FileText className="h-5 w-5 text-accent" />
@@ -421,15 +528,25 @@ export function AnalyticsPage({ surveyId }: { surveyId: string }) {
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {questions.map((question, questionIndex) => {
+        {answerableQuestions.map((question, questionIndex) => {
           const questionAnswers = answers.filter((answer) => answer.question_id === question.id);
 
           if (question.type === "multiple_choice") {
             const options = (question.options as string[]) || [];
-            const data = options.map((option) => ({
-              name: option,
-              value: questionAnswers.filter((answer) => answer.value === option).length,
-            }));
+            const data = options.map((option, index) => {
+              const value = questionAnswers.filter((answer) => answer.value === option).length;
+
+              return {
+                name: option,
+                value,
+                percentage: questionAnswers.length
+                  ? Math.round((value / questionAnswers.length) * 100)
+                  : 0,
+                fill: CHART_COLORS[index % CHART_COLORS.length],
+              };
+            });
+            const chartData = data.filter((item) => item.value > 0);
+
             return (
               <Card key={question.id} className="p-6">
                 <p className="mb-4 font-semibold">
@@ -438,20 +555,105 @@ export function AnalyticsPage({ surveyId }: { surveyId: string }) {
                 {questionAnswers.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{copy.noAnswers}</p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={240}>
-                    <PieChart>
-                      <Pie data={data} dataKey="value" nameKey="name" outerRadius={80} label>
-                        {data.map((_, index) => (
-                          <Cell
-                            key={`${question.id}-${index}`}
-                            fill={COLORS[index % COLORS.length]}
+                  <>
+                    <ResponsiveContainer width="100%" height={260}>
+                      <PieChart>
+                        <Tooltip
+                          formatter={(value, name) => {
+                            const numericValue = Number(value);
+                            const percentage = questionAnswers.length
+                              ? Math.round((numericValue / questionAnswers.length) * 100)
+                              : 0;
+
+                            return [
+                              `${numericValue} · ${percentage}%`,
+                              typeof name === "string" ? name : "",
+                            ];
+                          }}
+                          contentStyle={{
+                            borderRadius: "12px",
+                            borderColor: "rgba(37, 99, 235, 0.14)",
+                            boxShadow: "0 12px 30px rgba(15, 23, 42, 0.08)",
+                          }}
+                        />
+                        <Pie
+                          data={chartData}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={58}
+                          outerRadius={92}
+                          paddingAngle={3}
+                          cornerRadius={10}
+                          stroke="#ffffff"
+                          strokeWidth={4}
+                          labelLine={false}
+                          label={renderPieSliceLabel}
+                        >
+                          <Label
+                            content={({ viewBox }) => {
+                              const box = viewBox as { cx?: number; cy?: number } | undefined;
+
+                              if (!box?.cx || !box?.cy) {
+                                return null;
+                              }
+
+                              return (
+                                <text
+                                  x={box.cx}
+                                  y={box.cy}
+                                  textAnchor="middle"
+                                  dominantBaseline="middle"
+                                >
+                                  <tspan
+                                    x={box.cx}
+                                    y={box.cy - 4}
+                                    className="fill-slate-900 text-xl font-bold"
+                                  >
+                                    {questionAnswers.length}
+                                  </tspan>
+                                  <tspan
+                                    x={box.cx}
+                                    y={box.cy + 16}
+                                    className="fill-slate-500 text-[11px] font-medium"
+                                  >
+                                    {lang === "mn" ? "хариулт" : "responses"}
+                                  </tspan>
+                                </text>
+                              );
+                            }}
                           />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
+                          {chartData.map((entry, index) => (
+                            <Cell
+                              key={`${question.id}-${index}`}
+                              fill={entry.fill}
+                              className="drop-shadow-[0_10px_18px_rgba(37,99,235,0.12)]"
+                            />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      {data.map((item) => (
+                        <div
+                          key={`${question.id}-${item.name}`}
+                          className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: item.fill }}
+                            />
+                            <span className="text-sm text-slate-700">{item.name}</span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-slate-900">{item.value}</p>
+                            <p className="text-[11px] text-slate-500">{item.percentage}%</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </Card>
             );
@@ -483,7 +685,7 @@ export function AnalyticsPage({ surveyId }: { surveyId: string }) {
                     <XAxis dataKey="name" />
                     <YAxis allowDecimals={false} />
                     <Tooltip />
-                    <Bar dataKey="value" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="value" fill={PRIMARY_CHART_COLOR} radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </Card>

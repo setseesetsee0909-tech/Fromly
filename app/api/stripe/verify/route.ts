@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Plan } from "@/lib/plans";
+import { getStripeSecretKeyMode } from "@/lib/stripe-checkout";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const IS_DEV = process.env.NODE_ENV !== "production";
 const VALID_PLANS = new Set<Plan>(["free", "pro", "team"]);
+const STRIPE_MODE = getStripeSecretKeyMode(STRIPE_SECRET_KEY) ?? "live";
 
 function isPlan(value: string): value is Plan {
   return VALID_PLANS.has(value as Plan);
@@ -120,7 +122,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, plan, mode: "live" });
+    return NextResponse.json({ success: true, plan, mode: STRIPE_MODE });
   } catch (error) {
     return NextResponse.json(
       {

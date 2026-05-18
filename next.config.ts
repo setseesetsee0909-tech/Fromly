@@ -6,6 +6,7 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  allowedDevOrigins: ["http://localhost:3000", "http://192.168.10.66:3000"],
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -41,50 +41,67 @@ export function SurveyShareDialog({
   const [isPublished, setIsPublished] = useState(published);
   const [busy, setBusy] = useState(false);
 
-  const copy =
-    lang === "mn"
-      ? {
-          title: "Судалгаа хуваалцах",
-          description: `“${surveyTitle}” судалгааны public link-ийг удирдана. Хэрэв survey одоогоор ноорог байвал link copy эсвэл open хийх үед автоматаар нийтлэгдэнэ.`,
-          accessTitle: "Нээлттэй хандалт",
-          accessHint: "Энэ link-тэй хүн бүр судалгааг нээж бөглөх боломжтой.",
-          live: "Нийтлэгдсэн",
-          draft: "Ноорог",
-          autoPublish: "Link-ээ хуваалцах үед survey автоматаар нийтлэгдэнэ.",
-          linkLabel: "Survey link",
-          loadingLink: "Link ачаалж байна...",
-          localWarning:
-            "Энэ нь local development link тул бусад хэрэглэгч нээж чадахгүй. App-аа deploy хийх эсвэл `NEXT_PUBLIC_APP_URL`-д public domain тохируулна уу.",
-          publish: "Нийтлэх",
-          openForm: "Форм нээх",
-          copyLink: "Link хуулах",
-          copied: "Survey link хуулагдлаа",
-          publishedToast: "Survey нийтлэгдэж, хуваалцахад бэлэн боллоо",
-          publishError: "Хуваалцах тохиргоог шинэчилж чадсангүй",
-          localToast: "Энэ link зөвхөн таны өөрийн компьютер дээр ажиллана",
-          copyLabel: "Survey link хуулах",
-        }
-      : {
-          title: "Share survey",
-          description: `Manage the public link for "${surveyTitle}". If the survey is still a draft, copying or opening the link will publish it automatically, similar to Google Forms.`,
-          accessTitle: "Public access",
-          accessHint: "Anyone with this link can open and submit the survey.",
-          live: "Live",
-          draft: "Draft",
-          autoPublish: "The survey will go live automatically when you share this link.",
-          linkLabel: "Survey link",
-          loadingLink: "Loading link...",
-          localWarning:
-            "This is a local development link, so other users cannot open it. Deploy the app or set `NEXT_PUBLIC_APP_URL` to a public domain.",
-          publish: "Publish",
-          openForm: "Open form",
-          copyLink: "Copy link",
-          copied: "Survey link copied",
-          publishedToast: "Survey is now live and ready to share",
-          publishError: "Unable to update sharing settings",
-          localToast: "This link uses localhost and only works on your own machine",
-          copyLabel: "Copy survey link",
-        };
+  const copy = useMemo(
+    () =>
+      lang === "mn"
+        ? {
+            title: "Судалгаа хуваалцах",
+            description: `“${surveyTitle}” судалгааны public link-ийг удирдана. Ноорог төлөвтэй байвал share хийх үед автоматаар нийтлэгдэнэ.`,
+            accessTitle: "Нээлттэй хандалт",
+            accessHint: "Энэ link-тэй хүн бүр судалгааг нээж бөглөх боломжтой.",
+            respondentHint: "Энэ бол хариулагчдад явуулах public form link. Excel export биш.",
+            live: "Нийтлэгдсэн",
+            draft: "Ноорог",
+            autoPublish: "Link-ээ хуваалцах үед survey автоматаар нийтлэгдэнэ.",
+            linkLabel: "Survey link",
+            loadingLink: "Link ачаалж байна...",
+            localWarning:
+              "Энэ нь local development link тул бусад хэрэглэгч нээж чадахгүй. App-аа deploy хийх эсвэл `NEXT_PUBLIC_APP_URL`-д public domain тохируулна уу.",
+            publish: "Нийтлэх",
+            shareNow: "Шууд share хийх",
+            openForm: "Форм нээх",
+            copyLink: "Link хуулах",
+            copyMessage: "Мессеж хуулах",
+            copied: "Survey link хуулагдлаа",
+            copiedMessage: "Илгээх мессеж хуулагдлаа",
+            copyFailed: "Clipboard руу хуулах үед алдаа гарлаа",
+            publishedToast: "Survey нийтлэгдэж, хуваалцахад бэлэн боллоо",
+            publishError: "Хуваалцах тохиргоог шинэчилж чадсангүй",
+            copyLabel: "Survey link хуулах",
+            previewHint: "Public domain-тай үед чат аппууд preview card-ийг автоматаар харуулна.",
+            shareText: (title: string) => `Сайн уу? "${title}" судалгаанд оролцоод бөглөөд өгөөч.`,
+          }
+        : {
+            title: "Share survey",
+            description: `Manage the public link for "${surveyTitle}". If the survey is still a draft, sharing it will publish it automatically.`,
+            accessTitle: "Public access",
+            accessHint: "Anyone with this link can open and submit the survey.",
+            respondentHint:
+              "This is the public form link respondents should use. It is not the Excel export file.",
+            live: "Live",
+            draft: "Draft",
+            autoPublish: "The survey will go live automatically when you share this link.",
+            linkLabel: "Survey link",
+            loadingLink: "Loading link...",
+            localWarning:
+              "This is a local development link, so other users cannot open it. Deploy the app or set `NEXT_PUBLIC_APP_URL` to a public domain.",
+            publish: "Publish",
+            shareNow: "Share now",
+            openForm: "Open form",
+            copyLink: "Copy link",
+            copyMessage: "Copy message",
+            copied: "Survey link copied",
+            copiedMessage: "Share message copied",
+            copyFailed: "Unable to copy to clipboard",
+            publishedToast: "Survey is now live and ready to share",
+            publishError: "Unable to update sharing settings",
+            copyLabel: "Copy survey link",
+            previewHint:
+              "When this uses a public domain, chat apps can show the survey preview automatically.",
+            shareText: (title: string) => `Hi, please open and fill out this survey: "${title}".`,
+          },
+    [lang, surveyTitle],
+  );
 
   const isControlled = open !== undefined;
   const dialogOpen = isControlled ? open : internalOpen;
@@ -111,6 +128,15 @@ export function SurveyShareDialog({
     surveyUrl.includes("localhost") ||
     surveyUrl.includes("127.0.0.1") ||
     surveyUrl.includes("0.0.0.0");
+  const shareSupported = typeof navigator !== "undefined" && typeof navigator.share === "function";
+
+  const shareMessage = useMemo(() => {
+    if (!surveyUrl) {
+      return "";
+    }
+
+    return `${copy.shareText(surveyTitle)}\n\n${surveyUrl}`;
+  }, [copy, surveyTitle, surveyUrl]);
 
   const setDialogOpen = (nextOpen: boolean) => {
     if (!isControlled) {
@@ -118,6 +144,39 @@ export function SurveyShareDialog({
     }
 
     onOpenChange?.(nextOpen);
+  };
+
+  const copyText = async (value: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(value);
+        return true;
+      } catch {
+        // Fall back to a manual copy approach below.
+      }
+    }
+
+    if (typeof document === "undefined") {
+      return false;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = value;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+      return document.execCommand("copy");
+    } catch {
+      return false;
+    } finally {
+      document.body.removeChild(textarea);
+    }
   };
 
   const ensurePublished = async () => {
@@ -154,10 +213,53 @@ export function SurveyShareDialog({
       return;
     }
 
-    await navigator.clipboard.writeText(surveyUrl);
+    const copied = await copyText(surveyUrl);
+    if (!copied) {
+      toast.error(copy.copyFailed);
+      return;
+    }
+
     toast.success(copy.copied);
-    if (isLocalOnlyLink) {
-      toast.warning(copy.localToast);
+  };
+
+  const handleCopyMessage = async () => {
+    const ready = await ensurePublished();
+    if (!ready || !shareMessage) {
+      return;
+    }
+
+    const copied = await copyText(shareMessage);
+    if (!copied) {
+      toast.error(copy.copyFailed);
+      return;
+    }
+
+    toast.success(copy.copiedMessage);
+  };
+
+  const handleNativeShare = async () => {
+    const ready = await ensurePublished();
+    if (!ready || !surveyUrl) {
+      return;
+    }
+
+    if (!shareSupported) {
+      await handleCopyMessage();
+      return;
+    }
+
+    try {
+      await navigator.share({
+        title: surveyTitle,
+        text: copy.shareText(surveyTitle),
+        url: surveyUrl,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+
+      await handleCopyMessage();
     }
   };
 
@@ -185,6 +287,7 @@ export function SurveyShareDialog({
               <div>
                 <p className="text-sm font-medium">{copy.accessTitle}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{copy.accessHint}</p>
+                <p className="mt-2 text-xs font-medium text-primary">{copy.respondentHint}</p>
               </div>
               <div
                 className={`rounded-full px-2.5 py-1 text-xs font-medium ${
@@ -211,6 +314,7 @@ export function SurveyShareDialog({
                 <span className="sr-only">{copy.copyLabel}</span>
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground">{copy.previewHint}</p>
             {isLocalOnlyLink && <p className="text-xs text-amber-600">{copy.localWarning}</p>}
           </div>
         </div>
@@ -226,17 +330,25 @@ export function SurveyShareDialog({
               {copy.publish}
             </Button>
           )}
+          <Button
+            variant="outline"
+            onClick={handleCopyMessage}
+            disabled={busy || !surveyUrl || isLocalOnlyLink}
+          >
+            <Copy className="mr-2 h-4 w-4" />
+            {copy.copyMessage}
+          </Button>
           <Button variant="outline" onClick={handleOpenForm} disabled={busy || !surveyUrl}>
             <ExternalLink className="mr-2 h-4 w-4" />
             {copy.openForm}
           </Button>
-          <Button onClick={handleCopyLink} disabled={busy || !surveyUrl}>
+          <Button onClick={handleNativeShare} disabled={busy || !surveyUrl || isLocalOnlyLink}>
             {busy ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Send className="mr-2 h-4 w-4" />
             )}
-            {copy.copyLink}
+            {copy.shareNow}
           </Button>
         </DialogFooter>
       </DialogContent>

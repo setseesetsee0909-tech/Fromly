@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Loader2, Star } from "lucide-react";
 import { useI18n } from "@/components/formly/I18nProvider";
 import { Logo } from "@/components/formly/Logo";
@@ -18,6 +18,23 @@ interface Q {
   label: string;
   options: unknown;
   position: number;
+}
+
+function isSectionQuestion(question: Q) {
+  return question.type === "section";
+}
+
+function getSectionDescription(question: Q) {
+  if (
+    !question.options ||
+    typeof question.options !== "object" ||
+    Array.isArray(question.options)
+  ) {
+    return "";
+  }
+
+  const description = (question.options as { description?: unknown }).description;
+  return typeof description === "string" ? description : "";
 }
 
 export function TakeSurveyPage({ surveyId }: { surveyId: string }) {
@@ -43,6 +60,9 @@ export function TakeSurveyPage({ surveyId }: { surveyId: string }) {
           backHome: "Нүүр хуудас",
           answerPlaceholder: "Хариултаа бичнэ үү...",
           submit: "Илгээх",
+          required: "Заавал",
+          introTitle: "Судалгааны заавар",
+          introDesc: "Доорх асуултуудад дарааллаар нь хариулна уу.",
         }
       : {
           missingAnswers: "Please answer every question before submitting",
@@ -55,38 +75,66 @@ export function TakeSurveyPage({ surveyId }: { surveyId: string }) {
           backHome: "Back to home",
           answerPlaceholder: "Write your answer...",
           submit: "Submit",
+          required: "Required",
+          introTitle: "Survey guide",
+          introDesc: "Please answer the questions below in order.",
         };
 
   useEffect(() => {
-    void (async () => {
-      const [surveyResult, questionResult] = await Promise.all([
-        supabase
-          .from("surveys")
-          .select("title, description, is_published")
-          .eq("id", surveyId)
-          .maybeSingle(),
-        supabase
-          .from("questions")
-          .select("id, type, label, options, position")
-          .eq("survey_id", surveyId)
-          .order("position"),
-      ]);
+    let active = true;
 
-      const surveyRow = surveyResult.data;
-      if (!surveyRow || !surveyRow.is_published) {
+    void (async () => {
+      try {
+        const [surveyResult, questionResult] = await Promise.all([
+          supabase
+            .from("surveys")
+            .select("title, description, is_published")
+            .eq("id", surveyId)
+            .maybeSingle(),
+          supabase
+            .from("questions")
+            .select("id, type, label, options, position")
+            .eq("survey_id", surveyId)
+            .order("position"),
+        ]);
+
+        const surveyRow = surveyResult.data;
+        if (!active) {
+          return;
+        }
+
+        if (!surveyRow || !surveyRow.is_published) {
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+
+        setSurvey(surveyRow);
+        setQuestions(questionResult.data ?? []);
+        setLoading(false);
+      } catch (error) {
+        console.error("Failed to load public survey", error);
+        if (!active) {
+          return;
+        }
+
         setNotFound(true);
         setLoading(false);
-        return;
       }
-
-      setSurvey(surveyRow);
-      setQuestions(questionResult.data ?? []);
-      setLoading(false);
     })();
+
+    return () => {
+      active = false;
+    };
   }, [surveyId]);
 
+  const answerableQuestions = useMemo(
+    () => questions.filter((question) => !isSectionQuestion(question)),
+    [questions],
+  );
+
   const submit = async () => {
-    const missing = questions.filter(
+    const missing = answerableQuestions.filter(
       (question) => answers[question.id] === undefined || answers[question.id] === "",
     );
     if (missing.length > 0) {
@@ -97,27 +145,25 @@ export function TakeSurveyPage({ surveyId }: { surveyId: string }) {
     setSubmitting(true);
     try {
       const geo = await fetchGeo();
-      const { data: response, error } = await supabase
-        .from("responses")
-        .insert({
-          survey_id: surveyId,
-          country: geo.country,
-          region: geo.region,
-          city: geo.city,
-          lat: geo.lat,
-          lng: geo.lng,
-        })
-        .select()
-        .single();
-      if (error) throw error;
+      const response = await fetch(`/api/surveys/${encodeURIComponent(surveyId)}/responses`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          geo,
+          answers: answerableQuestions.map((question) => ({
+            questionId: question.id,
+            value: answers[question.id] as never,
+          })),
+        }),
+      });
 
-      const rows = questions.map((question) => ({
-        response_id: response.id,
-        question_id: question.id,
-        value: answers[question.id] as never,
-      }));
-      const { error: answerError } = await supabase.from("answers").insert(rows);
-      if (answerError) throw answerError;
+      const result = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) {
+        throw new Error(result?.error || copy.error);
+      }
+
       setDone(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : copy.error);
@@ -128,7 +174,7 @@ export function TakeSurveyPage({ surveyId }: { surveyId: string }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(180deg,#eef4ff_0%,#f8fbff_35%,#ffffff_100%)]">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
@@ -136,7 +182,7 @@ export function TakeSurveyPage({ surveyId }: { surveyId: string }) {
 
   if (notFound || !survey) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+      <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(180deg,#eef4ff_0%,#f8fbff_35%,#ffffff_100%)] p-6">
         <Card className="max-w-md p-8 text-center">
           <h1 className="text-xl font-bold">{copy.notFoundTitle}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{copy.notFoundDesc}</p>
@@ -150,7 +196,7 @@ export function TakeSurveyPage({ surveyId }: { surveyId: string }) {
 
   if (done) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+      <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(180deg,#eef4ff_0%,#f8fbff_35%,#ffffff_100%)] p-6">
         <Card className="max-w-md p-10 text-center">
           <div className="mx-auto inline-flex rounded-full bg-primary/10 p-4 text-primary">
             <CheckCircle2 className="h-10 w-10" />
@@ -168,92 +214,135 @@ export function TakeSurveyPage({ surveyId }: { surveyId: string }) {
     );
   }
 
-  const answered = questions.filter(
+  const answered = answerableQuestions.filter(
     (question) => answers[question.id] !== undefined && answers[question.id] !== "",
   ).length;
-  const progress = questions.length ? (answered / questions.length) * 100 : 0;
+  const progress = answerableQuestions.length ? (answered / answerableQuestions.length) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-6 py-4">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#eef4ff_0%,#f8fbff_35%,#ffffff_100%)]">
+      <header className="border-b bg-white/80 backdrop-blur">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
           <Logo />
-          <span className="text-xs text-muted-foreground">
-            {answered}/{questions.length}
+          <span className="text-xs font-medium text-muted-foreground">
+            {answered}/{answerableQuestions.length}
           </span>
         </div>
-        <div className="h-1 w-full bg-muted">
+        <div className="h-1 w-full bg-primary/12">
           <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl px-6 py-10">
-        <h1 className="text-3xl font-bold tracking-tight">{survey.title}</h1>
-        {survey.description && <p className="mt-2 text-muted-foreground">{survey.description}</p>}
+      <main className="mx-auto max-w-3xl px-4 py-8 md:px-6 md:py-10">
+        <Card className="overflow-hidden border-primary/20 bg-white shadow-sm">
+          <div className="h-4 bg-gradient-to-r from-primary via-blue-500 to-sky-400" />
+          <div className="space-y-4 p-6 md:p-8">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">{survey.title}</h1>
+            {survey.description && (
+              <p className="max-w-2xl text-sm leading-6 text-slate-600">{survey.description}</p>
+            )}
+            <div className="rounded-xl border border-primary/15 bg-primary/5 px-4 py-3">
+              <p className="text-sm font-semibold text-primary">{copy.introTitle}</p>
+              <p className="mt-1 text-sm text-primary/80">{copy.introDesc}</p>
+            </div>
+          </div>
+        </Card>
 
-        <div className="mt-8 space-y-4">
-          {questions.map((question, index) => (
-            <Card key={question.id} className="p-6">
-              <p className="font-semibold">
-                {index + 1}. {question.label}
-              </p>
-              <div className="mt-4">
-                {question.type === "text" && (
-                  <Textarea
-                    value={(answers[question.id] as string) || ""}
-                    onChange={(event) =>
-                      setAnswers((current) => ({ ...current, [question.id]: event.target.value }))
-                    }
-                    placeholder={copy.answerPlaceholder}
-                    rows={3}
-                  />
-                )}
-                {question.type === "multiple_choice" && (
-                  <div className="space-y-2">
-                    {((question.options as string[]) || []).map((option) => (
-                      <label
-                        key={option}
-                        className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition hover:bg-muted/50 ${
-                          answers[question.id] === option ? "border-primary bg-primary/5" : ""
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name={question.id}
-                          checked={answers[question.id] === option}
-                          onChange={() =>
-                            setAnswers((current) => ({ ...current, [question.id]: option }))
+        <div className="mt-6 space-y-4">
+          {questions.map((question) => {
+            if (isSectionQuestion(question)) {
+              return (
+                <Card
+                  key={question.id}
+                  className="overflow-hidden border-primary/20 bg-white shadow-sm"
+                >
+                  <div className="h-3 bg-gradient-to-r from-primary to-sky-400" />
+                  <div className="space-y-3 p-5 md:p-6">
+                    <h2 className="text-xl font-bold text-slate-900">{question.label}</h2>
+                    {getSectionDescription(question) && (
+                      <p className="text-sm leading-6 text-slate-600">
+                        {getSectionDescription(question)}
+                      </p>
+                    )}
+                  </div>
+                </Card>
+              );
+            }
+
+            const questionNumber =
+              answerableQuestions.findIndex((entry) => entry.id === question.id) + 1;
+
+            return (
+              <Card key={question.id} className="border-slate-200 bg-white p-5 shadow-sm md:p-6">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="font-semibold leading-7 text-slate-900">
+                    {questionNumber}. {question.label}
+                  </p>
+                  <span className="shrink-0 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-rose-700">
+                    {copy.required}
+                  </span>
+                </div>
+                <div className="mt-5">
+                  {question.type === "text" && (
+                    <Textarea
+                      value={(answers[question.id] as string) || ""}
+                      onChange={(event) =>
+                        setAnswers((current) => ({ ...current, [question.id]: event.target.value }))
+                      }
+                      placeholder={copy.answerPlaceholder}
+                      rows={4}
+                      className="rounded-xl border-slate-300 focus-visible:ring-primary"
+                    />
+                  )}
+                  {question.type === "multiple_choice" && (
+                    <div className="space-y-3">
+                      {((question.options as string[]) || []).map((option) => (
+                        <label
+                          key={option}
+                          className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${
+                            answers[question.id] === option
+                              ? "border-primary bg-primary/5"
+                              : "border-slate-200 hover:bg-slate-50"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name={question.id}
+                            checked={answers[question.id] === option}
+                            onChange={() =>
+                              setAnswers((current) => ({ ...current, [question.id]: option }))
+                            }
+                            className="accent-primary"
+                          />
+                          <span className="text-sm text-slate-800">{option}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {question.type === "rating" && (
+                    <div className="flex flex-wrap gap-2">
+                      {[1, 2, 3, 4, 5].map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() =>
+                            setAnswers((current) => ({ ...current, [question.id]: value }))
                           }
-                          className="accent-primary"
-                        />
-                        <span className="text-sm">{option}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-                {question.type === "rating" && (
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map((value) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() =>
-                          setAnswers((current) => ({ ...current, [question.id]: value }))
-                        }
-                        className={`flex h-12 w-12 items-center justify-center rounded-lg border transition ${
-                          (answers[question.id] as number) >= value
-                            ? "border-accent bg-accent text-accent-foreground"
-                            : "hover:bg-muted"
-                        }`}
-                      >
-                        <Star className="h-5 w-5" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </Card>
-          ))}
+                          className={`flex h-12 w-12 items-center justify-center rounded-xl border transition ${
+                            (answers[question.id] as number) >= value
+                              ? "border-primary/40 bg-primary/10 text-primary"
+                              : "border-slate-200 hover:bg-slate-50"
+                          }`}
+                        >
+                          <Star className="h-5 w-5" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
         </div>
 
         <Button onClick={submit} disabled={submitting} size="lg" className="mt-6 w-full">

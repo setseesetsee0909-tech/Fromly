@@ -53,6 +53,66 @@ export type Database = {
           },
         ]
       }
+      manual_billing_requests: {
+        Row: {
+          account_name: string
+          account_number: string
+          amount_mnt: number
+          bank_name: string
+          created_at: string
+          id: string
+          note: string | null
+          payer_name: string
+          plan: Database["public"]["Enums"]["plan_tier"]
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          transfer_reference: string
+          updated_at: string
+          user_email: string
+          user_id: string
+        }
+        Insert: {
+          account_name: string
+          account_number: string
+          amount_mnt: number
+          bank_name: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          payer_name: string
+          plan: Database["public"]["Enums"]["plan_tier"]
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          transfer_reference: string
+          updated_at?: string
+          user_email: string
+          user_id: string
+        }
+        Update: {
+          account_name?: string
+          account_number?: string
+          amount_mnt?: number
+          bank_name?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          payer_name?: string
+          plan?: Database["public"]["Enums"]["plan_tier"]
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          transfer_reference?: string
+          updated_at?: string
+          user_email?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -191,6 +251,7 @@ export type Database = {
       }
       surveys: {
         Row: {
+          created_with_ai: boolean
           created_at: string
           description: string | null
           id: string
@@ -201,6 +262,7 @@ export type Database = {
           workspace_id: string | null
         }
         Insert: {
+          created_with_ai?: boolean
           created_at?: string
           description?: string | null
           id?: string
@@ -211,6 +273,7 @@ export type Database = {
           workspace_id?: string | null
         }
         Update: {
+          created_with_ai?: boolean
           created_at?: string
           description?: string | null
           id?: string
