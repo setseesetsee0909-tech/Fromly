@@ -1,4 +1,5 @@
 import { getStripeCheckoutMode } from "@/lib/stripe-checkout";
+import { normalizeEnvValue } from "@/lib/env";
 
 export type BillingCheckoutMode =
   | "mock"
@@ -28,7 +29,7 @@ interface BillingCheckoutModeOptions {
 }
 
 function normalize(value?: string) {
-  return value?.trim() ?? "";
+  return normalizeEnvValue(value);
 }
 
 function hasUsableQPayAmount(amount: number | string | undefined) {

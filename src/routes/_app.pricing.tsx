@@ -1,6 +1,4 @@
 "use client";
-
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Building2,
@@ -80,7 +78,6 @@ type PricingPageProps = {
 };
 
 export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
-  const router = useRouter();
   const { plan, refresh, setPlan } = usePlan();
   const { session, user } = useAuth();
   const { t, lang } = useI18n();
@@ -526,10 +523,7 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
 
   const choose = async (nextPlan: Plan) => {
     if (!user) {
-      toast.message(
-        lang === "mn" ? "Ehleed nevtreed urgeljluulne uu." : "Sign in to continue to checkout.",
-      );
-      router.push("/login");
+      toast.error(copy.signInFirst);
       return;
     }
 
@@ -869,63 +863,60 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
           <h1 className="text-3xl font-bold tracking-tight">{t("pricing.title")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{t("pricing.desc")}</p>
         </div>
-        <div className="grid gap-5 sm:gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-3">
           {tiers.map((tier) => {
             const active = plan === tier.id;
             const needsBillingSetup = tier.id !== "free" && checkoutMode === "unavailable";
             const needsSignIn = tier.id !== "free" && !user;
-            const actionHint = needsBillingSetup
-              ? checkoutUnavailableMessage
-              : needsSignIn
-                ? lang === "mn"
-                  ? "Upgrade hiihiin tuld ehleed nevterne uu."
-                  : "Sign in first to start the upgrade flow."
-                : null;
+            const actionHint = needsSignIn ? copy.signInFirst : null;
             return (
-              <Card
-                key={tier.id}
-                className={`relative flex h-full flex-col overflow-hidden rounded-[28px] p-5 sm:p-6 ${
-                  tier.highlight ? "border-primary shadow-lg" : ""
-                }`}
-              >
-                {tier.highlight && (
-                  <Badge className="absolute right-4 top-4 z-10 sm:-top-3 sm:right-6">
-                    <Sparkles className="mr-1 h-3 w-3" /> {copy.popular}
-                  </Badge>
-                )}
-                <h3 className="pr-20 text-xl font-semibold sm:pr-0">{tier.name}</h3>
-                <p className="mt-3 text-[2.15rem] font-bold leading-none sm:text-[2.6rem]">
-                  {lang === "mn" ? PLAN_PRICE[tier.id].mn : PLAN_PRICE[tier.id].en}
-                </p>
-                <ul className="mt-5 flex-1 space-y-3.5">
-                  {tier.features.map((feature) => (
-                    <li
-                      key={feature}
-                      className="flex items-start gap-3 text-sm leading-6 sm:text-base"
-                    >
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className="mt-6 min-h-12 w-full text-base"
-                  variant={active ? "outline" : tier.highlight ? "default" : "secondary"}
-                  disabled={active}
-                  onClick={() => void choose(tier.id)}
+              <div key={tier.id} className="relative flex h-full flex-col">
+                <Card
+                  className={`relative flex h-full flex-col overflow-hidden rounded-[28px] p-5 shadow-sm sm:p-6 ${
+                    tier.highlight
+                      ? "border-primary/70 bg-primary/[0.03] shadow-[0_20px_45px_rgba(37,99,235,0.14)]"
+                      : ""
+                  }`}
                 >
-                  {active
-                    ? t("plan.current")
-                    : tier.id === "free"
-                      ? t("plan.downgrade")
-                      : t("plan.upgrade")}
-                </Button>
-                {actionHint ? (
-                  <p className="mt-2 text-center text-xs leading-5 text-muted-foreground">
-                    {actionHint}
+                  {tier.highlight && (
+                    <Badge className="absolute right-5 top-5 z-10 rounded-full border border-primary/15 bg-primary px-3 py-1 text-[11px] font-semibold text-primary-foreground shadow-sm">
+                      <Sparkles className="mr-1 h-3 w-3" /> {copy.popular}
+                    </Badge>
+                  )}
+                  <h3 className="text-xl font-semibold">{tier.name}</h3>
+                  <p className="mt-3 text-[2.15rem] font-bold leading-none sm:text-[2.6rem]">
+                    {lang === "mn" ? PLAN_PRICE[tier.id].mn : PLAN_PRICE[tier.id].en}
                   </p>
-                ) : null}
-              </Card>
+                  <ul className="mt-5 flex-1 space-y-3.5">
+                    {tier.features.map((feature) => (
+                      <li
+                        key={feature}
+                        className="flex items-start gap-3 text-sm leading-6 sm:text-base"
+                      >
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    className="mt-6 min-h-12 w-full text-base"
+                    variant={active ? "outline" : tier.highlight ? "default" : "secondary"}
+                    disabled={active || needsBillingSetup}
+                    onClick={() => void choose(tier.id)}
+                  >
+                    {active
+                      ? t("plan.current")
+                      : tier.id === "free"
+                        ? t("plan.downgrade")
+                        : t("plan.upgrade")}
+                  </Button>
+                  {actionHint ? (
+                    <p className="mt-2 text-center text-xs leading-5 text-muted-foreground">
+                      {actionHint}
+                    </p>
+                  ) : null}
+                </Card>
+              </div>
             );
           })}
         </div>
@@ -950,7 +941,7 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
               {copy.summaryRows.map((row) => (
                 <div key={row.label} className="rounded-xl border bg-white p-4">
                   <p className="text-sm font-medium">{row.label}</p>
-                  <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
                     <div className="rounded-lg bg-muted/30 px-3 py-2">
                       <p className="font-semibold text-foreground">
                         {lang === "mn" ? "Үнэгүй" : "Free"}
@@ -976,7 +967,7 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
       </div>
 
       <Dialog open={Boolean(selectedTier)} onOpenChange={closeCheckout}>
-        <DialogContent className="max-h-[90vh] w-[calc(100vw-1rem)] max-w-[920px] overflow-y-auto border border-primary/10 bg-background p-0 shadow-2xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto border border-primary/10 bg-background p-0 shadow-2xl sm:max-w-[920px]">
           <DialogHeader className="sr-only">
             <DialogTitle>{copy.checkoutTitle}</DialogTitle>
             <DialogDescription>{checkoutDescriptionText}</DialogDescription>
@@ -1466,9 +1457,8 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
                   ) : null}
                 </div>
 
-                <DialogFooter className="mt-5 flex-col-reverse gap-3 border-t pt-4 sm:flex-row sm:justify-between">
+                <DialogFooter className="mt-5 border-t pt-4 sm:justify-between">
                   <Button
-                    className="w-full sm:w-auto"
                     variant="secondary"
                     onClick={() => closeCheckout(false)}
                     disabled={checkoutState === "processing" || monpayConfirmState === "processing"}
@@ -1476,7 +1466,7 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
                     {copy.checkoutCancel}
                   </Button>
                   <Button
-                    className="w-full sm:min-w-[220px]"
+                    className="min-w-[220px]"
                     onClick={() =>
                       monpaySession
                         ? void confirmMonPayTanCode()

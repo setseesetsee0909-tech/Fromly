@@ -1,4 +1,5 @@
 import type { Plan } from "@/lib/plans";
+import { normalizeEnvValue } from "@/lib/env";
 
 type PaidPlan = Exclude<Plan, "free">;
 
@@ -11,7 +12,7 @@ export interface ManualBillingConfig {
 }
 
 function normalize(value?: string) {
-  return value?.trim() ?? "";
+  return normalizeEnvValue(value);
 }
 
 function readAmount(value?: string) {
@@ -26,7 +27,9 @@ export function getManualBillingConfig(): ManualBillingConfig {
     bankName: normalize(process.env.MANUAL_BILLING_BANK_NAME),
     note: normalize(process.env.MANUAL_BILLING_NOTE),
     planAmounts: {
-      pro: readAmount(process.env.MANUAL_BILLING_PLAN_PRO_AMOUNT ?? process.env.QPAY_PLAN_PRO_AMOUNT),
+      pro: readAmount(
+        process.env.MANUAL_BILLING_PLAN_PRO_AMOUNT ?? process.env.QPAY_PLAN_PRO_AMOUNT,
+      ),
       team: readAmount(
         process.env.MANUAL_BILLING_PLAN_TEAM_AMOUNT ?? process.env.QPAY_PLAN_TEAM_AMOUNT,
       ),

@@ -1,4 +1,5 @@
 import type { Plan } from "@/lib/plans";
+import { normalizeEnvValue } from "@/lib/env";
 
 const DEFAULT_MONPAY_API_BASE_URL = "https://api.monpay.mn/resource/partner/v1";
 const DEFAULT_MONPAY_TOKEN_URL = "https://z-wallet.monpay.mn/v2/oauth/token";
@@ -28,7 +29,7 @@ interface MonPayApiResponse {
 }
 
 function normalize(value?: string) {
-  return value?.trim() ?? "";
+  return normalizeEnvValue(value);
 }
 
 function escapeXml(value: string) {

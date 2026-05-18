@@ -1,4 +1,5 @@
 import type { Plan } from "@/lib/plans";
+import { normalizeEnvValue } from "@/lib/env";
 
 const DEFAULT_QPAY_BASE_URL = "https://merchant-sandbox.qpay.mn";
 
@@ -43,7 +44,7 @@ interface CreateQPayInvoiceInput {
 }
 
 function normalize(value?: string) {
-  return value?.trim() ?? "";
+  return normalizeEnvValue(value);
 }
 
 function getQPayBaseUrl() {

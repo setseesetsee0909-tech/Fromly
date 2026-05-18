@@ -1,3 +1,5 @@
+import { normalizeEnvValue } from "@/lib/env";
+
 interface StripeConfigOptions {
   isDev: boolean;
   secretKey?: string;
@@ -16,7 +18,7 @@ const STRIPE_SECRET_KEY_PATTERN = /^sk_(test|live)_[A-Za-z0-9]{16,}$/;
 const STRIPE_PRICE_ID_PATTERN = /^price_[A-Za-z0-9]{8,}$/;
 
 function normalize(value?: string) {
-  return value?.trim() ?? "";
+  return normalizeEnvValue(value);
 }
 
 export function hasUsableStripeSecretKey(secretKey?: string) {
