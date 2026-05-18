@@ -47,31 +47,47 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Invalid session." }, { status: 401 });
     }
 
-    const url = new URL(request.url);
-    const wantsAll = url.searchParams.get("scope") === "all";
-    const admin = wantsAll ? await isAdminUser(user.id, user.email) : false;
-
-    if (wantsAll && !admin) {
+    if (!(await isAdminUser(user.id, user.email))) {
       return NextResponse.json({ error: "Admin access required." }, { status: 403 });
     }
 
-    const query = supabaseAdmin
-      .from("manual_billing_requests")
-      .select(
-        "id, user_id, user_email, plan, amount_mnt, status, bank_name, account_name, account_number, payer_name, transfer_reference, note, review_note, reviewed_at, reviewed_by, created_at, updated_at",
-      )
-      .order("created_at", { ascending: false });
+    const [surveysResult, profilesResult, rolesResult, manualRequestsResult] = await Promise.all([
+      supabaseAdmin
+        .from("surveys")
+        .select("id, title, is_published, created_at, owner_id")
+        .order("created_at", { ascending: false }),
+      supabaseAdmin
+        .from("profiles")
+        .select("user_id, display_name, created_at")
+        .order("created_at", { ascending: false }),
+      supabaseAdmin.from("user_roles").select("user_id, role"),
+      supabaseAdmin
+        .from("manual_billing_requests")
+        .select(
+          "id, user_id, user_email, plan, amount_mnt, status, bank_name, account_name, account_number, payer_name, transfer_reference, note, review_note, reviewed_at, reviewed_by, created_at, updated_at",
+        )
+        .order("created_at", { ascending: false }),
+    ]);
 
-    const { data, error } = wantsAll && admin ? await query : await query.eq("user_id", user.id);
+    const firstError =
+      surveysResult.error ||
+      profilesResult.error ||
+      rolesResult.error ||
+      manualRequestsResult.error;
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (firstError) {
+      return NextResponse.json({ error: firstError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ requests: data ?? [] });
+    return NextResponse.json({
+      manualRequests: manualRequestsResult.data ?? [],
+      profiles: profilesResult.data ?? [],
+      roles: rolesResult.data ?? [],
+      surveys: surveysResult.data ?? [],
+    });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to load billing requests." },
+      { error: error instanceof Error ? error.message : "Unable to load admin dashboard." },
       { status: 500 },
     );
   }

@@ -1,8 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { CheckCircle2, Eye, Loader2, ShieldAlert, ShieldCheck, ShieldOff, Sparkles, Trash2, XCircle } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  CheckCircle2,
+  Eye,
+  Loader2,
+  ShieldAlert,
+  ShieldCheck,
+  ShieldOff,
+  Sparkles,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import { useAuth } from "@/components/formly/AuthProvider";
 import { useI18n } from "@/components/formly/I18nProvider";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +70,7 @@ export function AdminPage() {
   const [roles, setRoles] = useState<RoleRow[]>([]);
   const [manualRequests, setManualRequests] = useState<ManualBillingRequestRow[]>([]);
   const [busy, setBusy] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
 
@@ -114,47 +125,56 @@ export function AdminPage() {
 
   const locale = lang === "mn" ? "mn-MN" : "en-US";
 
-  const load = async () => {
-    const requestPromise = session?.access_token
-      ? fetch("/api/manual-billing/requests?scope=all", {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }).then(async (response) => {
-          if (!response.ok) {
-            throw new Error("Unable to load manual billing requests.");
-          }
+  const load = useCallback(async () => {
+    setBusy(true);
+    setLoadError(null);
 
-          return (await response.json()) as { requests?: ManualBillingRequestRow[] };
-        })
-      : Promise.resolve({ requests: [] as ManualBillingRequestRow[] });
+    try {
+      if (!session?.access_token) {
+        throw new Error("Missing session token.");
+      }
 
-    const [surveyResult, profileResult, roleResult, manualRequestResult] = await Promise.all([
-      supabase
-        .from("surveys")
-        .select("id, title, is_published, created_at, owner_id")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("profiles")
-        .select("user_id, display_name, created_at")
-        .order("created_at", { ascending: false }),
-      supabase.from("user_roles").select("user_id, role"),
-      requestPromise,
-    ]);
+      const response = await fetch("/api/admin/dashboard", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
 
-    setSurveys(surveyResult.data ?? []);
-    setProfiles(profileResult.data ?? []);
-    setRoles((roleResult.data ?? []) as RoleRow[]);
-    setManualRequests(Array.isArray(manualRequestResult.requests) ? manualRequestResult.requests : []);
-    setBusy(false);
-  };
+      const data = (await response.json()) as {
+        error?: string;
+        manualRequests?: ManualBillingRequestRow[];
+        profiles?: ProfileRow[];
+        roles?: RoleRow[];
+        surveys?: SurveyRow[];
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error || copy.genericError);
+      }
+
+      setSurveys(Array.isArray(data.surveys) ? data.surveys : []);
+      setProfiles(Array.isArray(data.profiles) ? data.profiles : []);
+      setRoles(Array.isArray(data.roles) ? data.roles : []);
+      setManualRequests(Array.isArray(data.manualRequests) ? data.manualRequests : []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : copy.genericError;
+      setLoadError(message);
+      toast.error(message);
+      setSurveys([]);
+      setProfiles([]);
+      setRoles([]);
+      setManualRequests([]);
+    } finally {
+      setBusy(false);
+    }
+  }, [copy.genericError, session?.access_token]);
 
   useEffect(() => {
     if (!isAdmin) {
       return;
     }
     void load();
-  }, [isAdmin, session?.access_token]);
+  }, [isAdmin, load]);
 
   const removeSurvey = async (survey: SurveyRow) => {
     if (!confirm(copy.confirmDelete(survey.title))) {
@@ -300,6 +320,12 @@ export function AdminPage() {
         </Card>
       </div>
 
+      {loadError ? (
+        <Card className="border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+          {loadError}
+        </Card>
+      ) : null}
+
       <Card className="p-6">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
@@ -346,14 +372,13 @@ export function AdminPage() {
                     </div>
                   </TableCell>
                   <TableCell className="capitalize">{request.plan}</TableCell>
-                  <TableCell>
-                    {request.amount_mnt.toLocaleString(locale)}
-                    ₮
-                  </TableCell>
+                  <TableCell>{request.amount_mnt.toLocaleString(locale)}₮</TableCell>
                   <TableCell className="max-w-[220px]">
                     <p className="truncate font-mono text-xs">{request.transfer_reference}</p>
                     {request.note ? (
-                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{request.note}</p>
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                        {request.note}
+                      </p>
                     ) : null}
                   </TableCell>
                   <TableCell>

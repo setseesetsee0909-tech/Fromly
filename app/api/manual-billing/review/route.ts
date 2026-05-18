@@ -1,7 +1,23 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-async function isAdminUser(userId: string) {
+function getBootstrapAdminEmails() {
+  const raw = process.env.ADMIN_EMAILS ?? "";
+
+  return new Set(
+    raw
+      .split(/[,\n;]/)
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+async function isAdminUser(userId: string, email?: string | null) {
+  const normalizedEmail = email?.trim().toLowerCase() ?? "";
+  if (normalizedEmail && getBootstrapAdminEmails().has(normalizedEmail)) {
+    return true;
+  }
+
   const { data } = await supabaseAdmin
     .from("user_roles")
     .select("id")
@@ -31,7 +47,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid session." }, { status: 401 });
     }
 
-    if (!(await isAdminUser(user.id))) {
+    if (!(await isAdminUser(user.id, user.email))) {
       return NextResponse.json({ error: "Admin access required." }, { status: 403 });
     }
 
