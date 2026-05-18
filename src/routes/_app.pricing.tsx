@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Building2,
@@ -79,6 +80,7 @@ type PricingPageProps = {
 };
 
 export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
+  const router = useRouter();
   const { plan, refresh, setPlan } = usePlan();
   const { session, user } = useAuth();
   const { t, lang } = useI18n();
@@ -255,51 +257,51 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
           ? lang === "mn"
             ? "Банкны шилжүүлэг"
             : "Bank Transfer"
-        : checkoutMode === "monpay"
-          ? "MonPay TAN"
-          : checkoutMode === "qpay"
-            ? "QPay QR"
-            : checkoutMode === "unavailable"
-              ? "Billing Setup"
-              : copy.checkoutBadge;
+          : checkoutMode === "monpay"
+            ? "MonPay TAN"
+            : checkoutMode === "qpay"
+              ? "QPay QR"
+              : checkoutMode === "unavailable"
+                ? "Billing Setup"
+                : copy.checkoutBadge;
   const checkoutDescriptionText = isStripeHostedCheckout
-      ? lang === "mn"
-        ? "Баталгаажуулсны дараа Stripe Checkout руу шилжиж, Visa эсвэл Stripe дэмждэг картаар төлбөрөө хийнэ."
-        : "After you confirm, we redirect you to Stripe Checkout where you can pay with Visa or another Stripe-supported card."
+    ? lang === "mn"
+      ? "Баталгаажуулсны дараа Stripe Checkout руу шилжиж, Visa эсвэл Stripe дэмждэг картаар төлбөрөө хийнэ."
+      : "After you confirm, we redirect you to Stripe Checkout where you can pay with Visa or another Stripe-supported card."
     : isManualCheckout
       ? lang === "mn"
         ? "Банкны данс руу шилжүүлэг хийгээд гүйлгээний мэдээллээ илгээнэ. Админ төлбөрийг шалгасны дараа төлөвлөгөөг идэвхжүүлнэ."
         : "Send a bank transfer, then submit the transfer reference here. An admin reviews the payment and activates the plan."
-    : isMonPayCheckout
-      ? lang === "mn"
-        ? "Баталгаажуулсны дараа MonPay-аас SMS-ээр TAN код ирнэ. Эхлээд утасны дугаараа оруулаад, дараа нь ирсэн кодоор төлбөрөө баталгаажуулна."
-        : "After you confirm, MonPay sends a TAN code by SMS. Enter your phone number first, then confirm the payment with the TAN code."
-      : isQPayCheckout
+      : isMonPayCheckout
         ? lang === "mn"
-          ? "Баталгаажуулсны дараа QPay нэхэмжлэл үүснэ. QR код эсвэл банкны аппын холбоосоор төлбөрөө хийж болно."
-          : "After you confirm, we create a QPay invoice so you can pay with a QR code or a supported banking app."
-        : checkoutMode === "unavailable"
-          ? checkoutUnavailableMessage
-          : copy.checkoutDescription;
+          ? "Баталгаажуулсны дараа MonPay-аас SMS-ээр TAN код ирнэ. Эхлээд утасны дугаараа оруулаад, дараа нь ирсэн кодоор төлбөрөө баталгаажуулна."
+          : "After you confirm, MonPay sends a TAN code by SMS. Enter your phone number first, then confirm the payment with the TAN code."
+        : isQPayCheckout
+          ? lang === "mn"
+            ? "Баталгаажуулсны дараа QPay нэхэмжлэл үүснэ. QR код эсвэл банкны аппын холбоосоор төлбөрөө хийж болно."
+            : "After you confirm, we create a QPay invoice so you can pay with a QR code or a supported banking app."
+          : checkoutMode === "unavailable"
+            ? checkoutUnavailableMessage
+            : copy.checkoutDescription;
   const checkoutHeroText = isStripeHostedCheckout
-      ? lang === "mn"
-        ? "Formly захиалгаа Stripe-аар аюулгүй баталгаажуулна. Картын мэдээллээ Stripe-ийн хамгаалалттай хуудсан дээр оруулна."
-        : "Complete your Formly subscription securely with Stripe. Card details are entered on Stripe's hosted checkout page."
+    ? lang === "mn"
+      ? "Formly захиалгаа Stripe-аар аюулгүй баталгаажуулна. Картын мэдээллээ Stripe-ийн хамгаалалттай хуудсан дээр оруулна."
+      : "Complete your Formly subscription securely with Stripe. Card details are entered on Stripe's hosted checkout page."
     : isManualCheckout
       ? lang === "mn"
         ? "Formly төлөвлөгөөгөө банкны шилжүүлгээр төлж, гүйлгээний мэдээллээ илгээнэ. Админ баталгаажуулсны дараа эрх шинэчлэгдэнэ."
         : "Pay for your Formly plan with a bank transfer and submit the transfer details. Access updates after admin approval."
-    : isMonPayCheckout
-      ? lang === "mn"
-        ? "Formly захиалгаа MonPay-аар SMS TAN код ашиглан баталгаажуулж төлбөрөө хийж болно."
-        : "Complete your Formly subscription with MonPay using an SMS TAN code when QPay is not available."
-      : isQPayCheckout
+      : isMonPayCheckout
         ? lang === "mn"
-          ? "Formly захиалгаа QPay-аар төлж, Монголын банкны апп эсвэл QR-аар ахиулна."
-          : "Pay for your Formly subscription with QPay using a QR code or a supported Mongolian banking app."
-        : checkoutMode === "unavailable"
-          ? checkoutUnavailableMessage
-          : copy.checkoutHeroText;
+          ? "Formly захиалгаа MonPay-аар SMS TAN код ашиглан баталгаажуулж төлбөрөө хийж болно."
+          : "Complete your Formly subscription with MonPay using an SMS TAN code when QPay is not available."
+        : isQPayCheckout
+          ? lang === "mn"
+            ? "Formly захиалгаа QPay-аар төлж, Монголын банкны апп эсвэл QR-аар ахиулна."
+            : "Pay for your Formly subscription with QPay using a QR code or a supported Mongolian banking app."
+          : checkoutMode === "unavailable"
+            ? checkoutUnavailableMessage
+            : copy.checkoutHeroText;
   const checkoutCardLabel = isStripeHostedCheckout
     ? checkoutMode === "stripe_test"
       ? "Visa 4242 4242 4242 4242"
@@ -308,37 +310,37 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
       ? lang === "mn"
         ? "Банкны шилжүүлэг"
         : "Bank transfer"
-    : isMonPayCheckout
-      ? "MonPay SMS TAN"
-      : isQPayCheckout
-        ? lang === "mn"
-          ? "QPay QR / Банкны апп"
-          : "QPay QR / Bank app"
-        : copy.checkoutCard;
+      : isMonPayCheckout
+        ? "MonPay SMS TAN"
+        : isQPayCheckout
+          ? lang === "mn"
+            ? "QPay QR / Банкны апп"
+            : "QPay QR / Bank app"
+          : copy.checkoutCard;
   const checkoutNoticeText =
     checkoutMode === "stripe_live"
       ? lang === "mn"
-          ? "Энэ бол жинхэнэ Stripe захиалгын төлбөр. Амжилттай болсны дараа төлөвлөгөө автоматаар идэвхжинэ."
+        ? "Энэ бол жинхэнэ Stripe захиалгын төлбөр. Амжилттай болсны дараа төлөвлөгөө автоматаар идэвхжинэ."
         : "This is a real Stripe subscription payment. Your plan activates automatically after successful checkout."
       : checkoutMode === "stripe_test"
         ? lang === "mn"
-            ? "Stripe test горимд Visa 4242 4242 4242 4242 картаар шалгаж болно. Бодит мөнгө суутгахгүй."
+          ? "Stripe test горимд Visa 4242 4242 4242 4242 картаар шалгаж болно. Бодит мөнгө суутгахгүй."
           : "This uses Stripe test mode. You can verify the flow with the Visa test card 4242 4242 4242 4242."
         : isManualCheckout
           ? lang === "mn"
             ? "Төлбөр хийсний дараа админ гараар шалгаж баталгаажуулна. Хүсэлт хүлээгдэж байх хугацаанд төлөв нь төлбөрийн хэсэгт харагдана."
             : "After you send the transfer, an admin reviews it manually. The pending status remains visible on the billing page."
-        : isMonPayCheckout
-          ? lang === "mn"
-            ? "MonPay бүртгэлтэй хэрэглэгчийн утас руу TAN код мессежээр очно. Тэр кодыг энд оруулж төлбөрөө баталгаажуулна."
-            : "A TAN code is sent to the customer's phone by SMS. Enter that code here to confirm the payment."
-          : isQPayCheckout
+          : isMonPayCheckout
             ? lang === "mn"
-              ? "QR кодоо уншуулах эсвэл банкны апп нээгээд төлбөрөө хийсний дараа энэ дэлгэц дээр автоматаар шалгана."
-              : "Scan the QR code or open a banking app to pay, then we verify the payment here automatically."
-            : checkoutMode === "unavailable"
-              ? checkoutUnavailableMessage
-              : copy.checkoutNotice;
+              ? "MonPay бүртгэлтэй хэрэглэгчийн утас руу TAN код мессежээр очно. Тэр кодыг энд оруулж төлбөрөө баталгаажуулна."
+              : "A TAN code is sent to the customer's phone by SMS. Enter that code here to confirm the payment."
+            : isQPayCheckout
+              ? lang === "mn"
+                ? "QR кодоо уншуулах эсвэл банкны апп нээгээд төлбөрөө хийсний дараа энэ дэлгэц дээр автоматаар шалгана."
+                : "Scan the QR code or open a banking app to pay, then we verify the payment here automatically."
+              : checkoutMode === "unavailable"
+                ? checkoutUnavailableMessage
+                : copy.checkoutNotice;
   const secureLineText = isStripeHostedCheckout
     ? lang === "mn"
       ? "Stripe-ийн хамгаалалттай төлбөрийн хуудас"
@@ -347,17 +349,17 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
       ? lang === "mn"
         ? "Админаар шалгагдах банкны шилжүүлэг"
         : "Manual bank transfer with admin review"
-    : isMonPayCheckout
-      ? lang === "mn"
-        ? "SMS TAN баталгаажуулалттай MonPay API"
-        : "MonPay partner API with SMS-based TAN confirmation"
-      : isQPayCheckout
+      : isMonPayCheckout
         ? lang === "mn"
-          ? "Банкны апп холбоостой QPay QR нэхэмжлэл"
-          : "QPay QR invoice with bank app deep links"
-        : checkoutMode === "unavailable"
-          ? "Billing provider credentials are required"
-          : copy.secureLine;
+          ? "SMS TAN баталгаажуулалттай MonPay API"
+          : "MonPay partner API with SMS-based TAN confirmation"
+        : isQPayCheckout
+          ? lang === "mn"
+            ? "Банкны апп холбоостой QPay QR нэхэмжлэл"
+            : "QPay QR invoice with bank app deep links"
+          : checkoutMode === "unavailable"
+            ? "Billing provider credentials are required"
+            : copy.secureLine;
   const modeLineText =
     checkoutMode === "stripe_live"
       ? lang === "mn"
@@ -371,70 +373,70 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
           ? lang === "mn"
             ? "Банкны шилжүүлгээр төлөөд баталгаажуулалт хүлээнэ"
             : "Pay by bank transfer and wait for approval"
-        : isMonPayCheckout
-          ? lang === "mn"
-            ? "Утасны дугаараар MonPay төлбөр хийж TAN кodoор баталгаажуулна"
-            : "MonPay phone-number payment with TAN code confirmation"
-          : isQPayCheckout
-            ? "Монгол банкны апп болон QPay QR төлбөр"
-            : checkoutMode === "unavailable"
-              ? lang === "mn"
-                ? "Төлбөр хүлээж авахаас өмнө provider-ийн тохиргоо шаардлагатай"
-                : "Provider setup needed before accepting payments"
-              : copy.noChargeLine;
+          : isMonPayCheckout
+            ? lang === "mn"
+              ? "Утасны дугаараар MonPay төлбөр хийж TAN кodoор баталгаажуулна"
+              : "MonPay phone-number payment with TAN code confirmation"
+            : isQPayCheckout
+              ? "Монгол банкны апп болон QPay QR төлбөр"
+              : checkoutMode === "unavailable"
+                ? lang === "mn"
+                  ? "Төлбөр хүлээж авахаас өмнө provider-ийн тохиргоо шаардлагатай"
+                  : "Provider setup needed before accepting payments"
+                : copy.noChargeLine;
   const redirectHintText = isStripeHostedCheckout
-      ? lang === "mn"
-        ? "Баталгаажуулсны дараа Stripe руу шилжиж картын мэдээллээ оруулна."
-        : "After you confirm, you'll continue to Stripe to enter your card details."
+    ? lang === "mn"
+      ? "Баталгаажуулсны дараа Stripe руу шилжиж картын мэдээллээ оруулна."
+      : "After you confirm, you'll continue to Stripe to enter your card details."
     : isManualCheckout
       ? lang === "mn"
         ? "Доорх банкны мэдээллээр шилжүүлэг хийгээд, дараа нь төлөгчийн нэр, гүйлгээний утга, тайлбараа илгээн хүсэлт үүсгэнэ."
         : "Use the bank details below to pay, then submit the payer name, transfer reference, and note for review."
-    : isMonPayCheckout
-      ? lang === "mn"
-        ? "Эхлээд утасны дугаараа оруулж TAN код авна, дараа нь мессежээр ирсэн кодоо оруулж төлөвлөгөөгөө идэвхжүүлнэ."
-        : "First enter the phone number to receive a TAN code, then enter the SMS code to activate the plan."
-      : isQPayCheckout
+      : isMonPayCheckout
         ? lang === "mn"
-          ? "Баталгаажуулсны дараа QR код болон аппын холбоосууд харагдана. Төлбөрийг хийсний дараа систем автоматаар шалгана."
-          : "After you confirm, you'll see the QR code and app links. We then verify the payment automatically."
-        : checkoutMode === "unavailable"
-          ? checkoutUnavailableMessage
-          : copy.redirectHint;
+          ? "Эхлээд утасны дугаараа оруулж TAN код авна, дараа нь мессежээр ирсэн кодоо оруулж төлөвлөгөөгөө идэвхжүүлнэ."
+          : "First enter the phone number to receive a TAN code, then enter the SMS code to activate the plan."
+        : isQPayCheckout
+          ? lang === "mn"
+            ? "Баталгаажуулсны дараа QR код болон аппын холбоосууд харагдана. Төлбөрийг хийсний дараа систем автоматаар шалгана."
+            : "After you confirm, you'll see the QR code and app links. We then verify the payment automatically."
+          : checkoutMode === "unavailable"
+            ? checkoutUnavailableMessage
+            : copy.redirectHint;
   const renewsValueText = isStripeHostedCheckout
-      ? lang === "mn"
-        ? "Сарын захиалга, цуцлах хүртэл автоматаар сунгагдана"
-        : "Monthly subscription until canceled"
+    ? lang === "mn"
+      ? "Сарын захиалга, цуцлах хүртэл автоматаар сунгагдана"
+      : "Monthly subscription until canceled"
     : isManualCheckout
       ? lang === "mn"
         ? "Админ баталгаажуулсны дараа төлөвлөгөө идэвхжинэ"
         : "Activates after the transfer is approved"
-    : isMonPayCheckout
-      ? lang === "mn"
-        ? "MonPay-аар баталгаажуулсны дараа шууд идэвхжинэ"
-        : "Activates right after the MonPay TAN confirmation"
-      : isQPayCheckout
+      : isMonPayCheckout
         ? lang === "mn"
-          ? "QPay-аар төлсний дараа захиалга идэвхжинэ"
-          : "Subscription activated after QPay payment"
-        : copy.renewsValue;
+          ? "MonPay-аар баталгаажуулсны дараа шууд идэвхжинэ"
+          : "Activates right after the MonPay TAN confirmation"
+        : isQPayCheckout
+          ? lang === "mn"
+            ? "QPay-аар төлсний дараа захиалга идэвхжинэ"
+            : "Subscription activated after QPay payment"
+          : copy.renewsValue;
   const checkoutActionLabel = isStripeHostedCheckout
-      ? lang === "mn"
-        ? "Stripe руу үргэлжлүүлэх"
-        : "Continue to Stripe"
+    ? lang === "mn"
+      ? "Stripe руу үргэлжлүүлэх"
+      : "Continue to Stripe"
     : isManualCheckout
       ? lang === "mn"
         ? "Хүсэлт илгээх"
         : "Submit request"
-    : isMonPayCheckout
-      ? lang === "mn"
-        ? "TAN код авах"
-        : "Send TAN code"
-      : isQPayCheckout
+      : isMonPayCheckout
         ? lang === "mn"
-          ? "QPay нэхэмжлэл үүсгэх"
-          : "Create QPay invoice"
-        : copy.checkoutConfirm;
+          ? "TAN код авах"
+          : "Send TAN code"
+        : isQPayCheckout
+          ? lang === "mn"
+            ? "QPay нэхэмжлэл үүсгэх"
+            : "Create QPay invoice"
+          : copy.checkoutConfirm;
 
   const tiers: Tier[] = [
     {
@@ -524,7 +526,10 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
 
   const choose = async (nextPlan: Plan) => {
     if (!user) {
-      toast.error(copy.signInFirst);
+      toast.message(
+        lang === "mn" ? "Ehleed nevtreed urgeljluulne uu." : "Sign in to continue to checkout.",
+      );
+      router.push("/login");
       return;
     }
 
@@ -555,7 +560,7 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
     setManualPayerName(
       typeof user.user_metadata?.full_name === "string"
         ? user.user_metadata.full_name
-        : user.email ?? "",
+        : (user.email ?? ""),
     );
     setManualTransferReference("");
     setManualNote("");
@@ -596,7 +601,9 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
       }
 
       await refresh();
-      toast.success(lang === "mn" ? "Төлөвлөгөө амжилттай идэвхжлээ." : "Plan activated successfully.");
+      toast.success(
+        lang === "mn" ? "Төлөвлөгөө амжилттай идэвхжлээ." : "Plan activated successfully.",
+      );
       window.location.href = "/billing";
     } catch (error) {
       const message =
@@ -748,10 +755,10 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
         isManualCheckout
           ? "/api/manual-billing/create-request"
           : isMonPayCheckout
-          ? "/api/monpay/create-payment"
-          : isQPayCheckout
-            ? "/api/qpay/create-invoice"
-            : "/api/stripe/create-checkout",
+            ? "/api/monpay/create-payment"
+            : isQPayCheckout
+              ? "/api/qpay/create-invoice"
+              : "/api/stripe/create-checkout",
         {
           method: "POST",
           headers: {
@@ -862,35 +869,49 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
           <h1 className="text-3xl font-bold tracking-tight">{t("pricing.title")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{t("pricing.desc")}</p>
         </div>
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-5 sm:gap-6 md:grid-cols-3">
           {tiers.map((tier) => {
             const active = plan === tier.id;
+            const needsBillingSetup = tier.id !== "free" && checkoutMode === "unavailable";
+            const needsSignIn = tier.id !== "free" && !user;
+            const actionHint = needsBillingSetup
+              ? checkoutUnavailableMessage
+              : needsSignIn
+                ? lang === "mn"
+                  ? "Upgrade hiihiin tuld ehleed nevterne uu."
+                  : "Sign in first to start the upgrade flow."
+                : null;
             return (
               <Card
                 key={tier.id}
-                className={`relative flex flex-col p-6 ${tier.highlight ? "border-primary shadow-lg" : ""}`}
+                className={`relative flex h-full flex-col overflow-hidden rounded-[28px] p-5 sm:p-6 ${
+                  tier.highlight ? "border-primary shadow-lg" : ""
+                }`}
               >
                 {tier.highlight && (
-                  <Badge className="absolute -top-3 right-6">
+                  <Badge className="absolute right-4 top-4 z-10 sm:-top-3 sm:right-6">
                     <Sparkles className="mr-1 h-3 w-3" /> {copy.popular}
                   </Badge>
                 )}
-                <h3 className="text-lg font-semibold">{tier.name}</h3>
-                <p className="mt-2 text-3xl font-bold">
+                <h3 className="pr-20 text-xl font-semibold sm:pr-0">{tier.name}</h3>
+                <p className="mt-3 text-[2.15rem] font-bold leading-none sm:text-[2.6rem]">
                   {lang === "mn" ? PLAN_PRICE[tier.id].mn : PLAN_PRICE[tier.id].en}
                 </p>
-                <ul className="mt-6 flex-1 space-y-3">
+                <ul className="mt-5 flex-1 space-y-3.5">
                   {tier.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2 text-sm">
+                    <li
+                      key={feature}
+                      className="flex items-start gap-3 text-sm leading-6 sm:text-base"
+                    >
                       <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                       <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
                 <Button
-                  className="mt-6"
+                  className="mt-6 min-h-12 w-full text-base"
                   variant={active ? "outline" : tier.highlight ? "default" : "secondary"}
-                  disabled={active || (tier.id !== "free" && checkoutMode === "unavailable")}
+                  disabled={active}
                   onClick={() => void choose(tier.id)}
                 >
                   {active
@@ -899,6 +920,11 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
                       ? t("plan.downgrade")
                       : t("plan.upgrade")}
                 </Button>
+                {actionHint ? (
+                  <p className="mt-2 text-center text-xs leading-5 text-muted-foreground">
+                    {actionHint}
+                  </p>
+                ) : null}
               </Card>
             );
           })}
@@ -924,7 +950,7 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
               {copy.summaryRows.map((row) => (
                 <div key={row.label} className="rounded-xl border bg-white p-4">
                   <p className="text-sm font-medium">{row.label}</p>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                  <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-3">
                     <div className="rounded-lg bg-muted/30 px-3 py-2">
                       <p className="font-semibold text-foreground">
                         {lang === "mn" ? "Үнэгүй" : "Free"}
@@ -950,7 +976,7 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
       </div>
 
       <Dialog open={Boolean(selectedTier)} onOpenChange={closeCheckout}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto border border-primary/10 bg-background p-0 shadow-2xl sm:max-w-[920px]">
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-1rem)] max-w-[920px] overflow-y-auto border border-primary/10 bg-background p-0 shadow-2xl">
           <DialogHeader className="sr-only">
             <DialogTitle>{copy.checkoutTitle}</DialogTitle>
             <DialogDescription>{checkoutDescriptionText}</DialogDescription>
@@ -1175,7 +1201,9 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
                         </div>
                         <div>
                           <p className="text-base font-semibold">
-                            {lang === "mn" ? "Банкны шилжүүлгийн мэдээлэл" : "Bank transfer details"}
+                            {lang === "mn"
+                              ? "Банкны шилжүүлгийн мэдээлэл"
+                              : "Bank transfer details"}
                           </p>
                           <p className="text-sm text-muted-foreground">
                             {lang === "mn"
@@ -1229,7 +1257,11 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
                           </p>
                           <Input
                             onChange={(event) => setManualPayerName(event.target.value)}
-                            placeholder={lang === "mn" ? "Шилжүүлэг хийсэн хүний нэр" : "Name used for the transfer"}
+                            placeholder={
+                              lang === "mn"
+                                ? "Шилжүүлэг хийсэн хүний нэр"
+                                : "Name used for the transfer"
+                            }
                             value={manualPayerName}
                           />
                         </div>
@@ -1434,8 +1466,9 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
                   ) : null}
                 </div>
 
-                <DialogFooter className="mt-5 border-t pt-4 sm:justify-between">
+                <DialogFooter className="mt-5 flex-col-reverse gap-3 border-t pt-4 sm:flex-row sm:justify-between">
                   <Button
+                    className="w-full sm:w-auto"
                     variant="secondary"
                     onClick={() => closeCheckout(false)}
                     disabled={checkoutState === "processing" || monpayConfirmState === "processing"}
@@ -1443,7 +1476,7 @@ export function PricingPage({ checkoutMode, manualConfig }: PricingPageProps) {
                     {copy.checkoutCancel}
                   </Button>
                   <Button
-                    className="min-w-[220px]"
+                    className="w-full sm:min-w-[220px]"
                     onClick={() =>
                       monpaySession
                         ? void confirmMonPayTanCode()
